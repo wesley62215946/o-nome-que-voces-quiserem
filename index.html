@@ -1,11 +1,293 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>PÁGINA DE TESTE</title>
-  </head>
-  <body>
-    <h1>
-      ISSO É UMA PÁGINA DA BOA
-    </h1>
-  </body>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEFACEMENT · LULA LIVRE</title>
+    <style>
+        /* RESET e base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: #111;
+            border: 3px solid #00ff41;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.3), inset 0 0 30px rgba(0, 255, 65, 0.1);
+            padding: 30px 25px;
+            border-radius: 12px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Efeito de scanline / ruído */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg,
+                    rgba(0, 255, 65, 0.02) 0px,
+                    rgba(0, 255, 65, 0.02) 2px,
+                    transparent 2px,
+                    transparent 4px);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Cabeçalho hacker */
+        .hacker-tag {
+            color: #00ff41;
+            font-size: 0.9rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            border-bottom: 1px dashed #00ff41;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            animation: pisca 1.2s infinite;
+        }
+
+        @keyframes pisca {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        /* Título principal */
+        h1 {
+            color: #ff0040;
+            font-size: 2.8rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 15px #ff0040, 0 0 30px #ff0040;
+            letter-spacing: 6px;
+            margin: 10px 0 15px;
+            font-weight: 900;
+            word-break: break-word;
+        }
+
+        h1 span {
+            color: #00ff41;
+            text-shadow: 0 0 15px #00ff41;
+        }
+
+        /* Subtítulo */
+        .subtitle {
+            color: #ccc;
+            font-size: 1.1rem;
+            background: #1a1a1a;
+            display: inline-block;
+            padding: 6px 20px;
+            border-left: 3px solid #00ff41;
+            border-right: 3px solid #00ff41;
+            margin-bottom: 25px;
+            letter-spacing: 2px;
+        }
+
+        /* ÁREA DA FOTO */
+        .foto-area {
+            margin: 20px 0 30px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .foto-placeholder {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 4px solid #00ff41;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.4);
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: 0.3s;
+            position: relative;
+        }
+
+        .foto-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .foto-placeholder .sem-foto {
+            color: #555;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 10px;
+            line-height: 1.4;
+        }
+
+        .foto-placeholder .sem-foto i {
+            display: block;
+            font-size: 2.5rem;
+            color: #00ff41;
+            margin-bottom: 5px;
+        }
+
+        /* Frases */
+        .frases-box {
+            background: #0f0f0f;
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 20px 15px;
+            margin: 20px 0;
+            box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.05);
+        }
+
+        .frases-box h2 {
+            color: #00ff41;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+            border-bottom: 1px dotted #333;
+            padding-bottom: 10px;
+        }
+
+        .frase-item {
+            color: #e0e0e0;
+            font-size: 1.3rem;
+            line-height: 1.6;
+            padding: 10px 0;
+            border-bottom: 1px dashed #222;
+            font-style: italic;
+        }
+
+        .frase-item:last-child {
+            border-bottom: none;
+        }
+
+        .frase-item .destaque {
+            color: #ffcc00;
+            font-weight: bold;
+            text-shadow: 0 0 8px #ffcc00;
+        }
+
+        .frase-item .autor {
+            color: #00ff41;
+            font-style: normal;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            display: block;
+            margin-top: 4px;
+        }
+
+        /* Rodapé hacker */
+        .footer {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 2px solid #00ff41;
+            color: #00ff41;
+            font-size: 0.8rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            animation: pisca 2s infinite;
+        }
+
+        .footer span {
+            color: #ff0040;
+        }
+
+        /* Aviso de imagem */
+        .aviso-img {
+            color: #888;
+            font-size: 0.7rem;
+            margin-top: 10px;
+            background: #1a1a1a;
+            padding: 5px 12px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        /* Responsivo */
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .frase-item { font-size: 1rem; }
+            .foto-placeholder { width: 150px; height: 150px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- Tag hacker -->
+        <div class="hacker-tag">// DEFACEMENT · HACKED BY AMOR · LULA 13 //</div>
+
+        <!-- Título -->
+        <h1>LULA <span>13</span></h1>
+        <div class="subtitle">#O Brasil Voltou</div>
+
+        <div class="foto-area">
+            <div class="foto-placeholder">
+             
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Foto_oficial_do_Presidente_da_Rep%C3%BAblica_Luiz_In%C3%A1cio_Lula_da_Silva.jpg/500px-Foto_oficial_do_Presidente_da_Rep%C3%BAblica_Luiz_In%C3%A1cio_Lula_da_Silva.jpg" alt="">
+
+            </div>
+        </div>
+        <div class="aviso-img">⬆️ Substitua o placeholder pela sua imagem ⬆️</div>
+
+        <!-- FRASES DO LULA -->
+        <div class="frases-box">
+            <h2>⚡ Frases que inspiram ⚡</h2>
+
+            <div class="frase-item">
+                “A esperança <span class="destaque">venceu o medo</span>.”
+                <span class="autor">— Lula, 2022</span>
+            </div>
+
+            <div class="frase-item">
+                “Ninguém solta a mão de <span class="destaque">ninguém</span>.”
+                <span class="autor">— Lula, 2023</span>
+            </div>
+
+            <div class="frase-item">
+                “O Brasil <span class="destaque">voltou</span> a ser um país que sonha.”
+                <span class="autor">— Lula, 2023</span>
+            </div>
+
+            <div class="frase-item">
+                “Eu quero um país onde as pessoas possam <span class="destaque">jantar</span>.”
+                <span class="autor">— Lula, 2002</span>
+            </div>
+
+            <div class="frase-item">
+                “A democracia é <span class="destaque">indispensável</span>.”
+                <span class="autor">— Lula, 2024</span>
+            </div>
+
+            <div class="frase-item">
+                “Se eu não tivesse amor, não teria <span class="destaque">paciência</span>.”
+                <span class="autor">— Lula, 2023</span>
+            </div>
+        </div>
+
+        <!-- Rodapé -->
+        <div class="footer">
+            <span>✦</span> LULA PRESIDENTE · 2026 <span>✦</span><br>
+            <small style="opacity:0.6;">#Paz #Amor #Democracia</small>
+        </div>
+
+    </div>
+
+</body>
 </html>
