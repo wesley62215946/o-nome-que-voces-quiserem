@@ -1,293 +1,2950 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEFACEMENT · LULA LIVRE</title>
-    <style>
-        /* RESET e base */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="Site interativo e didático para entender exatamente o que é WebSocket, como funciona o handshake, frames, conexão full-duplex e quando usar." />
+  <title>WebSocket Lab — Aprenda visualmente</title>
+  <style>
+:root {
+  --bg: #07111f;
+  --bg-2: #0b1627;
+  --panel: rgba(13, 26, 46, .82);
+  --panel-solid: #0d1a2e;
+  --soft: #11223a;
+  --text: #f4f8ff;
+  --muted: #91a3bc;
+  --line: rgba(255,255,255,.10);
+  --accent: #69e5ff;
+  --accent-2: #8b7cff;
+  --green: #5cf0a5;
+  --yellow: #ffd166;
+  --red: #ff6b7a;
+  --content-bg: #f7f9fd;
+  --content-text: #10182a;
+  --content-muted: #5d6b80;
+  --content-card: #ffffff;
+  --shadow: 0 24px 70px rgba(0,0,0,.20);
+  --radius: 24px;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
 
-        body {
-            background: #0a0a0a;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Courier New', monospace;
-            padding: 20px;
-        }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.55;
+  overflow-x: hidden;
+}
+body.light-theme {
+  --bg: #eef4ff;
+  --bg-2: #ffffff;
+  --panel: rgba(255,255,255,.86);
+  --panel-solid: #ffffff;
+  --soft: #e9f0fb;
+  --text: #111a2c;
+  --muted: #617087;
+  --line: rgba(15, 27, 47, .11);
+  --content-bg: #f7f9fd;
+  --content-text: #10182a;
+  --content-muted: #5d6b80;
+  --content-card: #ffffff;
+}
+body.light-theme .dark-section { background: #eaf1fb; color: #111a2c; }
+body.light-theme .dark-section .section-heading p,
+body.light-theme .advanced-note,
+body.light-theme .ping-pong p { color: #64728a; }
+body.light-theme .handshake-console,
+body.light-theme .simulator,
+body.light-theme .frame-lab,
+body.light-theme .comparison-panel,
+body.light-theme .quiz-shell,
+body.light-theme .code-window,
+body.light-theme .life-explainer,
+body.light-theme .ping-pong,
+body.light-theme .security-card,
+body.light-theme .handshake-details .detail,
+body.light-theme .opcode-grid > div {
+  box-shadow: 0 20px 50px rgba(34,58,92,.09);
+}
 
-        .container {
-            max-width: 800px;
-            width: 100%;
-            background: #111;
-            border: 3px solid #00ff41;
-            box-shadow: 0 0 30px rgba(0, 255, 65, 0.3), inset 0 0 30px rgba(0, 255, 65, 0.1);
-            padding: 30px 25px;
-            border-radius: 12px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
+button, input, select { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { color: inherit; }
+a { color: inherit; text-decoration: none; }
+code { font-family: var(--mono); }
+::selection { background: rgba(105,229,255,.28); }
 
-        /* Efeito de scanline / ruído */
-        .container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(0deg,
-                    rgba(0, 255, 65, 0.02) 0px,
-                    rgba(0, 255, 65, 0.02) 2px,
-                    transparent 2px,
-                    transparent 4px);
-            pointer-events: none;
-            z-index: 5;
-        }
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 18px rgba(105,229,255,.65);
+}
+.noise {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: .025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
+}
 
-        /* Cabeçalho hacker */
-        .hacker-tag {
-            color: #00ff41;
-            font-size: 0.9rem;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-            border-bottom: 1px dashed #00ff41;
-            padding-bottom: 8px;
-            margin-bottom: 20px;
-            animation: pisca 1.2s infinite;
-        }
+.topbar {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  width: min(1180px, calc(100% - 32px));
+  height: 64px;
+  padding: 0 12px 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(7,17,31,.72);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 55px rgba(0,0,0,.18);
+}
+.light-theme .topbar { background: rgba(255,255,255,.80); }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+}
+.brand b { color: var(--accent); }
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(105,229,255,.18), rgba(139,124,255,.22));
+  border: 1px solid rgba(105,229,255,.3);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 14px;
+}
+.nav {
+  display: flex;
+  gap: 5px;
+  margin: 0 auto;
+}
+.nav a {
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  transition: .2s ease;
+}
+.nav a:hover { color: var(--text); background: rgba(255,255,255,.05); }
 
-        @keyframes pisca {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.2; }
-        }
+.section {
+  position: relative;
+  width: 100%;
+  padding: 120px max(24px, calc((100vw - 1180px) / 2));
+}
+.content-section {
+  background: var(--content-bg);
+  color: var(--content-text);
+}
+.dark-section {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(105,229,255,.06), transparent 28%),
+    radial-gradient(circle at 82% 70%, rgba(139,124,255,.07), transparent 30%),
+    var(--bg-2);
+  color: var(--text);
+}
 
-        /* Título principal */
-        h1 {
-            color: #ff0040;
-            font-size: 2.8rem;
-            text-transform: uppercase;
-            text-shadow: 0 0 15px #ff0040, 0 0 30px #ff0040;
-            letter-spacing: 6px;
-            margin: 10px 0 15px;
-            font-weight: 900;
-            word-break: break-word;
-        }
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.02fr .98fr;
+  align-items: center;
+  gap: 70px;
+  padding-top: 130px;
+  overflow: hidden;
+}
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.85), transparent 92%);
+}
+.hero-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(12px);
+  opacity: .22;
+  animation: floatOrb 10s ease-in-out infinite;
+}
+.orb-a {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, var(--accent), transparent 70%);
+  top: -170px; right: 8%;
+}
+.orb-b {
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, var(--accent-2), transparent 70%);
+  left: -160px; bottom: -80px;
+  animation-delay: -3s;
+}
+@keyframes floatOrb {
+  0%,100% { transform: translate(0,0) scale(1); }
+  50% { transform: translate(30px,25px) scale(1.08); }
+}
+.hero-content, .hero-visual { position: relative; z-index: 2; }
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.live-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(92,240,165,.55);
+  animation: pulseDot 1.8s infinite;
+}
+@keyframes pulseDot {
+  0% { box-shadow: 0 0 0 0 rgba(92,240,165,.5); }
+  70% { box-shadow: 0 0 0 10px rgba(92,240,165,0); }
+  100% { box-shadow: 0 0 0 0 rgba(92,240,165,0); }
+}
+.hero h1 {
+  margin: 22px 0 24px;
+  max-width: 760px;
+  font-size: clamp(52px, 6vw, 88px);
+  line-height: .98;
+  letter-spacing: -.055em;
+}
+.gradient-text {
+  background: linear-gradient(105deg, var(--accent), #b3f5ff 45%, #b9adff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-subtitle {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(17px, 1.7vw, 21px);
+}
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 34px;
+}
+.primary-btn, .secondary-btn, .ghost-btn, .danger-btn {
+  border: 0;
+  border-radius: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-weight: 800;
+  transition: transform .18s ease, opacity .18s ease, background .18s ease, border-color .18s ease;
+}
+.primary-btn:hover, .secondary-btn:hover, .ghost-btn:hover, .danger-btn:hover { transform: translateY(-2px); }
+.primary-btn:disabled, .danger-btn:disabled, button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  transform: none !important;
+}
+.primary-btn {
+  padding: 14px 19px;
+  color: #06101d;
+  background: linear-gradient(135deg, var(--accent), #a2f1ff);
+  box-shadow: 0 9px 30px rgba(105,229,255,.22);
+}
+.secondary-btn {
+  padding: 14px 19px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--line);
+}
+.ghost-btn {
+  padding: 11px 13px;
+  background: rgba(255,255,255,.045);
+  border: 1px solid var(--line);
+}
+.danger-btn {
+  padding: 11px 15px;
+  color: #ffdce1;
+  background: rgba(255,107,122,.12);
+  border: 1px solid rgba(255,107,122,.28);
+}
+.small { padding: 11px 15px; font-size: 13px; }
+.tiny { padding: 7px 10px; font-size: 11px; }
+.compact { padding: 9px 11px; font-size: 12px; }
+.hero-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 30px;
+}
+.hero-pills span {
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255,255,255,.025);
+  font-size: 12px;
+  font-weight: 700;
+}
+.protocol-stage {
+  position: relative;
+  min-height: 540px;
+  border: 1px solid var(--line);
+  border-radius: 34px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.01)),
+    rgba(7,17,31,.36);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+.protocol-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+.stage-label {
+  position: absolute;
+  top: 20px; left: 20px;
+  padding: 6px 9px;
+  border: 1px solid rgba(92,240,165,.25);
+  border-radius: 8px;
+  color: var(--green);
+  background: rgba(92,240,165,.07);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+.endpoint {
+  position: absolute;
+  top: 160px;
+  z-index: 3;
+  width: 112px;
+  padding: 16px 10px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(13,26,46,.92);
+  box-shadow: 0 16px 34px rgba(0,0,0,.22);
+}
+.endpoint-client { left: 7%; }
+.endpoint-server { right: 7%; }
+.endpoint-icon {
+  display: grid; place-items: center;
+  width: 48px; height: 48px;
+  margin: 0 auto 8px;
+  border-radius: 14px;
+  background: rgba(105,229,255,.08);
+  font-size: 24px;
+}
+.endpoint strong { display: block; font-size: 13px; }
+.endpoint small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+.duplex-line {
+  position: absolute;
+  z-index: 2;
+  top: 203px;
+  left: 26%;
+  right: 26%;
+  height: 50px;
+}
+.duplex-line::before, .duplex-line::after {
+  content:"";
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(105,229,255,.75), transparent);
+}
+.duplex-line::before { top: 14px; }
+.duplex-line::after { bottom: 14px; background: linear-gradient(90deg, transparent, rgba(139,124,255,.8), transparent); }
+.line-glow {
+  position: absolute;
+  inset: 4px 0;
+  background: radial-gradient(ellipse at center, rgba(105,229,255,.08), transparent 70%);
+}
+.packet {
+  position: absolute;
+  z-index: 4;
+  display: grid; place-items: center;
+  min-width: 32px; height: 22px;
+  padding: 0 7px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #07111f;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 900;
+  box-shadow: 0 0 18px rgba(105,229,255,.38);
+}
+.packet-a { top: 3px; animation: packetRight 3.2s linear infinite; }
+.packet-b { bottom: 3px; background: var(--accent-2); color: white; animation: packetLeft 4s linear infinite; }
+.packet-c { top: 15px; background: var(--green); animation: packetRight 2.4s linear infinite; animation-delay: -1s; }
+@keyframes packetRight { from { left: 0; opacity:.1 } 12%{opacity:1} 88%{opacity:1} to { left: calc(100% - 32px); opacity:.1 } }
+@keyframes packetLeft { from { right: 0; opacity:.1 } 12%{opacity:1} 88%{opacity:1} to { right: calc(100% - 32px); opacity:.1 } }
+.mini-terminal {
+  position: absolute;
+  z-index: 3;
+  left: 9%; right: 9%; bottom: 48px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(4,11,20,.78);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #a9b9cc;
+  line-height: 1.9;
+}
+.prompt { color: var(--accent); }
+.ok { color: var(--green); }
+.server-msg { color: #b9adff; }
 
-        h1 span {
-            color: #00ff41;
-            text-shadow: 0 0 15px #00ff41;
-        }
+.scroll-hint {
+  position: absolute;
+  z-index: 4;
+  left: 50%; bottom: 26px;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+.scroll-hint i { font-style: normal; animation: bounce 1.7s infinite; }
+@keyframes bounce { 0%,100% { transform: translateY(0); } 50%{ transform: translateY(7px); } }
 
-        /* Subtítulo */
-        .subtitle {
-            color: #ccc;
-            font-size: 1.1rem;
-            background: #1a1a1a;
-            display: inline-block;
-            padding: 6px 20px;
-            border-left: 3px solid #00ff41;
-            border-right: 3px solid #00ff41;
-            margin-bottom: 25px;
-            letter-spacing: 2px;
-        }
+.section-heading {
+  max-width: 860px;
+  margin-bottom: 48px;
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+.section-heading .section-number {
+  display: grid; place-items: center;
+  flex: 0 0 48px;
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  color: var(--accent);
+  border: 1px solid rgba(105,229,255,.30);
+  background: rgba(105,229,255,.08);
+  font: 800 12px var(--mono);
+}
+.content-section .section-heading .section-number {
+  color: #087f97;
+  border-color: rgba(8,127,151,.18);
+  background: rgba(8,127,151,.07);
+}
+.content-section .eyebrow { color: #087f97; }
+.section-heading h2 {
+  margin: 6px 0 10px;
+  font-size: clamp(34px, 4vw, 54px);
+  line-height: 1.04;
+  letter-spacing: -.04em;
+}
+.section-heading p {
+  margin: 0;
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 16px;
+}
+.content-section .section-heading p { color: var(--content-muted); }
 
-        /* ÁREA DA FOTO */
-        .foto-area {
-            margin: 20px 0 30px;
-            display: flex;
-            justify-content: center;
-        }
+.definition-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  align-items: center;
+  padding: 30px;
+  margin-bottom: 22px;
+  border-radius: var(--radius);
+  color: #f6fbff;
+  background:
+    linear-gradient(135deg, rgba(12,31,49,.98), rgba(15,23,50,.97)),
+    #0d1a2e;
+  box-shadow: var(--shadow);
+}
+.definition-icon {
+  display: grid; place-items: center;
+  width: 74px; height: 74px;
+  border-radius: 21px;
+  background: linear-gradient(135deg, rgba(105,229,255,.14), rgba(139,124,255,.2));
+  color: var(--accent);
+  font-size: 32px;
+}
+.micro-label {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.content-section .micro-label { color: #087f97; }
+.definition-card p {
+  margin: 8px 0 0;
+  font-size: clamp(20px, 2.3vw, 30px);
+  line-height: 1.25;
+  letter-spacing: -.02em;
+}
+.definition-card p strong { color: #a8effd; }
 
-        .foto-placeholder {
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            border: 4px solid #00ff41;
-            box-shadow: 0 0 30px rgba(0, 255, 65, 0.4);
-            background: #1a1a1a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            transition: 0.3s;
-            position: relative;
-        }
+.concept-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 20px 0 28px;
+}
+.concept-card {
+  min-height: 230px;
+  padding: 24px;
+  border: 1px solid #e6ebf3;
+  border-radius: 20px;
+  background: var(--content-card);
+  box-shadow: 0 10px 30px rgba(42,62,92,.05);
+}
+.concept-icon {
+  display: grid; place-items: center;
+  width: 46px; height: 46px;
+  margin-bottom: 38px;
+  border-radius: 13px;
+  background: #f0f6fc;
+  font-size: 22px;
+}
+.concept-card h3 { margin: 0 0 8px; font-size: 17px; }
+.concept-card p { margin: 0; color: var(--content-muted); font-size: 14px; }
 
-        .foto-placeholder img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
+.myth-fact {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 18px;
+  align-items: center;
+  padding: 26px;
+  border: 1px solid #e5eaf2;
+  border-radius: 20px;
+  background: white;
+}
+.myth, .fact { padding: 4px 8px; }
+.myth span, .fact span { display: block; margin-bottom: 5px; font-size: 11px; font-weight: 900; letter-spacing:.10em; }
+.myth span { color: #b84655; }
+.fact span { color: #13845a; }
+.myth p, .fact p { margin: 0; font-weight: 750; }
+.divider-arrow {
+  display: grid; place-items:center;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: #edf4f9;
+  color: #607084;
+}
 
-        .foto-placeholder .sem-foto {
-            color: #555;
-            font-size: 0.8rem;
-            text-align: center;
-            padding: 10px;
-            line-height: 1.4;
-        }
+.protocol-stack {
+  margin-top: 28px;
+  padding: 30px;
+  border-radius: 24px;
+  background: #0b1728;
+  color: white;
+  box-shadow: var(--shadow);
+}
+.stack-title h3 { margin: 6px 0 24px; font-size: 25px; }
+.stack-layers {
+  display: grid;
+  gap: 6px;
+}
+.layer {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 18px;
+  align-items: center;
+  min-height: 58px;
+  padding: 12px 17px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.layer span { font-weight: 900; }
+.layer span em { color: var(--muted); font-size: 11px; font-style: normal; }
+.layer strong { font-size: 13px; color: #b6c4d8; font-weight: 600; }
+.layer.app { background: rgba(139,124,255,.10); }
+.layer.websocket { background: rgba(105,229,255,.13); border-color: rgba(105,229,255,.24); }
+.layer.tls { background: rgba(92,240,165,.08); }
+.layer.tcp { background: rgba(255,209,102,.06); }
+.layer.ip { background: rgba(255,255,255,.03); }
+.note {
+  margin: 17px 0 0;
+  color: #9eb0c5;
+  font-size: 13px;
+}
+.note strong { color: white; }
 
-        .foto-placeholder .sem-foto i {
-            display: block;
-            font-size: 2.5rem;
-            color: #00ff41;
-            margin-bottom: 5px;
-        }
+.handshake-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: stretch;
+}
+.handshake-diagram {
+  min-height: 450px;
+  display: grid;
+  grid-template-columns: 120px 1fr 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255,255,255,.025);
+}
+.actor { text-align: center; }
+.actor-avatar {
+  display: grid; place-items:center;
+  width: 64px; height: 64px;
+  margin: 0 auto 10px;
+  border-radius: 19px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  font-size: 28px;
+}
+.actor strong { display:block; font-size:13px; }
+.actor small { color: var(--muted); font-size:10px; }
+.handshake-flow { display:grid; gap: 44px; }
+.flow-step {
+  position: relative;
+  opacity: .25;
+  transition: .35s ease;
+}
+.flow-step.active { opacity: 1; transform: scale(1.01); }
+.flow-tag {
+  position:absolute;
+  top:-16px;
+  left:50%;
+  transform:translateX(-50%);
+  display:grid; place-items:center;
+  width:22px; height:22px;
+  border-radius:50%;
+  background: var(--soft);
+  color: var(--muted);
+  font:800 9px var(--mono);
+}
+.flow-step.active .flow-tag { background: var(--accent); color:#07111f; box-shadow:0 0 18px rgba(105,229,255,.34); }
+.flow-arrow {
+  height: 34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  color: var(--muted);
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.flow-arrow::before {
+  content:"";
+  position:absolute;
+  left:0; right:0;
+  height:1px;
+  background: linear-gradient(90deg, transparent, rgba(105,229,255,.7), transparent);
+}
+.flow-arrow span, .flow-arrow i { position:relative; z-index:2; padding:0 5px; background:var(--bg-2); font-style:normal; }
+.flow-arrow i { color:var(--accent); font-size:18px; }
+.flow-arrow.duplex i { color:var(--green); }
 
-        /* Frases */
-        .frases-box {
-            background: #0f0f0f;
-            border: 1px solid #00ff41;
-            border-radius: 8px;
-            padding: 20px 15px;
-            margin: 20px 0;
-            box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.05);
-        }
+.handshake-console {
+  min-height: 450px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid var(--line);
+  border-radius:24px;
+  background:rgba(4,11,20,.78);
+  box-shadow:var(--shadow);
+}
+.console-bar, .code-bar {
+  height:52px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 16px;
+  border-bottom:1px solid var(--line);
+  color:var(--muted);
+  font:700 11px var(--mono);
+}
+.console-dots { display:flex; gap:5px; }
+.console-dots i { width:8px; height:8px; border-radius:50%; background:#35465c; }
+.console-dots i:nth-child(1){ background:#ff6b7a; }
+.console-dots i:nth-child(2){ background:#ffd166; }
+.console-dots i:nth-child(3){ background:#5cf0a5; }
+.status-badge {
+  margin-left:auto;
+  padding:5px 8px;
+  border-radius:6px;
+  font:800 9px var(--mono);
+}
+.status-badge.idle { color:#8ea0b7; background:rgba(255,255,255,.04); }
+.status-badge.connecting { color:#ffd166; background:rgba(255,209,102,.08); }
+.status-badge.open { color:#5cf0a5; background:rgba(92,240,165,.08); }
+.console-body {
+  flex:1;
+  min-height:320px;
+  padding:18px;
+  overflow:auto;
+  font:11px/1.72 var(--mono);
+  color:#b1bfd1;
+}
+.console-placeholder {
+  height:100%;
+  display:grid;
+  place-content:center;
+  text-align:center;
+  color:#63738a;
+}
+.big-icon { font-size:44px; color:#52627a; }
+.console-line { white-space:pre-wrap; word-break:break-word; animation: consoleIn .3s ease both; }
+.console-line.request { color:#c0d0e1; }
+.console-line.response { color:#c3baff; }
+.console-line.system { color:#5cf0a5; font-weight:800; }
+.console-line .header { color:#69e5ff; }
+.console-line .value { color:#ffd28a; }
+@keyframes consoleIn { from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none} }
+.console-actions {
+  display:flex; gap:8px;
+  padding:14px 16px;
+  border-top:1px solid var(--line);
+}
+.handshake-details {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+  margin-top:20px;
+}
+.handshake-details .detail {
+  padding:20px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:rgba(255,255,255,.025);
+}
+.detail code { color:var(--accent); font-size:12px; }
+.detail p { margin:10px 0 0; color:var(--muted); font-size:13px; }
+.advanced-note {
+  margin-top:18px;
+  padding:18px 20px;
+  border-left:3px solid var(--accent-2);
+  border-radius:0 14px 14px 0;
+  background:rgba(139,124,255,.055);
+  color:var(--muted);
+  font-size:13px;
+}
+.advanced-note span { color:#c8c0ff; font-weight:900; }
+.advanced-note p { margin:5px 0 0; }
 
-        .frases-box h2 {
-            color: #00ff41;
-            font-size: 1.1rem;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            margin-bottom: 15px;
-            border-bottom: 1px dotted #333;
-            padding-bottom: 10px;
-        }
+.simulator {
+  border:1px solid #dfe6ef;
+  border-radius:26px;
+  overflow:hidden;
+  background:white;
+  box-shadow:0 24px 70px rgba(43,62,93,.11);
+}
+.sim-toolbar {
+  min-height:80px;
+  padding:15px 18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  border-bottom:1px solid #e9edf3;
+}
+.connection-readout { display:flex; align-items:center; gap:11px; }
+.connection-readout small { display:block; color:#8794a6; font-size:9px; font-weight:900; letter-spacing:.1em; }
+.connection-readout strong { display:block; margin-top:1px; font:900 14px var(--mono); }
+.socket-led {
+  width:14px; height:14px;
+  border-radius:50%;
+  background:#a9b4c3;
+  box-shadow:0 0 0 5px #f0f2f5;
+  transition:.25s ease;
+}
+.socket-led.connecting { background:#e6b84c; box-shadow:0 0 0 5px #fff6df; }
+.socket-led.open { background:#2bc77c; box-shadow:0 0 0 5px #e1f9ed, 0 0 22px rgba(43,199,124,.35); }
+.socket-led.closing { background:#ff8d6c; box-shadow:0 0 0 5px #fff0eb; }
+.toolbar-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.simulator .primary-btn { color:#062332; }
+.simulator .ghost-btn { color:#304056; background:#f5f7fa; border-color:#e6eaf0; }
+.switch-label { display:flex; align-items:center; gap:8px; color:#67768a; font-size:11px; font-weight:800; }
+.switch-label input { display:none; }
+.switch {
+  position:relative;
+  width:38px; height:22px;
+  border-radius:999px;
+  background:#d9e0e8;
+  cursor:pointer;
+  transition:.2s;
+}
+.switch::after {
+  content:"";
+  position:absolute;
+  width:16px; height:16px;
+  left:3px; top:3px;
+  border-radius:50%;
+  background:white;
+  box-shadow:0 2px 6px rgba(0,0,0,.18);
+  transition:.2s;
+}
+.switch-label input:checked + .switch { background:#42c786; }
+.switch-label input:checked + .switch::after { transform:translateX(16px); }
 
-        .frase-item {
-            color: #e0e0e0;
-            font-size: 1.3rem;
-            line-height: 1.6;
-            padding: 10px 0;
-            border-bottom: 1px dashed #222;
-            font-style: italic;
-        }
+.socket-stage {
+  min-height:280px;
+  display:grid;
+  grid-template-columns:1fr minmax(170px,.75fr) 1fr;
+  gap:20px;
+  align-items:center;
+  padding:34px;
+  background:
+    linear-gradient(#f7fafc 1px, transparent 1px),
+    linear-gradient(90deg, #f7fafc 1px, transparent 1px),
+    #fbfcfe;
+  background-size:26px 26px;
+}
+.socket-party {
+  padding:20px;
+  border:1px solid #e1e7ef;
+  border-radius:18px;
+  background:white;
+  box-shadow:0 12px 30px rgba(44,62,90,.06);
+}
+.party-heading { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+.party-avatar {
+  display:grid; place-items:center;
+  width:42px; height:42px;
+  border-radius:12px;
+  background:#eff5fa;
+  font-size:20px;
+}
+.party-heading strong { display:block; }
+.party-heading small { color:#8b98aa; font-size:10px; }
+.composer { display:flex; gap:6px; }
+.composer input {
+  width:100%;
+  min-width:0;
+  padding:10px 11px;
+  border:1px solid #dfe5ed;
+  border-radius:10px;
+  outline:none;
+  color:#1b283a;
+  background:#fbfcfe;
+  font-size:12px;
+}
+.composer input:focus { border-color:#75cfe1; box-shadow:0 0 0 3px rgba(105,229,255,.13); }
+.composer button {
+  width:40px;
+  border:0;
+  border-radius:10px;
+  background:#0c1b2d;
+  color:#69e5ff;
+  cursor:pointer;
+}
+.socket-wire {
+  position:relative;
+  min-height:130px;
+  display:grid;
+  place-items:center;
+}
+.wire-track {
+  position:absolute;
+  left:0; right:0; top:50%;
+  height:2px;
+  background:#d8e0ea;
+  overflow:visible;
+}
+.wire-track::after {
+  content:"";
+  position:absolute;
+  inset:-3px 0;
+  opacity:0;
+  background:linear-gradient(90deg, transparent, rgba(105,229,255,.75), transparent);
+  transition:.3s;
+}
+.socket-wire.active .wire-track::after { opacity:1; animation:wireFlow 1.4s linear infinite; }
+@keyframes wireFlow { from { transform:translateX(-50%)} to { transform:translateX(50%)} }
+.wire-center {
+  position:relative;
+  z-index:2;
+  display:grid; place-items:center;
+  width:48px; height:48px;
+  border-radius:50%;
+  border:1px solid #dfe6ef;
+  background:white;
+  color:#93a1b2;
+  font-size:22px;
+  transition:.25s;
+}
+.socket-wire.active .wire-center { color:#0a8fae; border-color:#9bdae7; box-shadow:0 0 0 7px rgba(105,229,255,.10); }
+.wire-label {
+  position:absolute;
+  top:18px;
+  color:#9aa7b6;
+  font:800 10px var(--mono);
+}
+.flying-message {
+  position:absolute;
+  z-index:5;
+  top:42%;
+  max-width:120px;
+  padding:7px 9px;
+  border-radius:8px;
+  color:white;
+  background:#0d1a2e;
+  font:700 9px var(--mono);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  box-shadow:0 6px 18px rgba(0,0,0,.16);
+}
+.flying-message.to-server { animation:flyRight .8s ease forwards; }
+.flying-message.to-client { animation:flyLeft .8s ease forwards; background:#6a5de2; }
+@keyframes flyRight { from { left:-5%; opacity:0 } 15%{opacity:1} to { left:82%; opacity:0 } }
+@keyframes flyLeft { from { right:-5%; opacity:0 } 15%{opacity:1} to { right:82%; opacity:0 } }
 
-        .frase-item:last-child {
-            border-bottom: none;
-        }
+.message-log { border-top:1px solid #e8edf3; }
+.log-header {
+  min-height:58px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 18px;
+}
+.log-header strong { display:block; font-size:13px; }
+.log-body {
+  max-height:290px;
+  min-height:150px;
+  overflow:auto;
+  padding:0 18px 18px;
+}
+.empty-log {
+  min-height:130px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  color:#9aa5b4;
+  text-align:center;
+}
+.empty-log span { font-size:30px; }
+.empty-log p { margin:4px 0 0; font-size:12px; }
+.log-row {
+  display:grid;
+  grid-template-columns:70px 85px 1fr auto;
+  gap:12px;
+  align-items:center;
+  min-height:40px;
+  border-top:1px solid #f0f2f5;
+  font:11px var(--mono);
+  animation:rowIn .22s ease both;
+}
+@keyframes rowIn { from{opacity:0; transform:translateY(-4px)} to{opacity:1; transform:none} }
+.log-time { color:#99a5b4; }
+.log-source { font-weight:900; }
+.log-source.client { color:#0b8ea9; }
+.log-source.server { color:#6e5fce; }
+.log-source.system { color:#738096; }
+.log-payload { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.log-kind {
+  padding:4px 6px;
+  border-radius:5px;
+  color:#718094;
+  background:#f1f4f7;
+  font-size:9px;
+}
+.lesson-callout {
+  display:flex;
+  gap:16px;
+  align-items:flex-start;
+  margin-top:18px;
+  padding:20px 22px;
+  border:1px solid #dce8ef;
+  border-radius:18px;
+  background:#f1f9fc;
+}
+.lesson-icon { font-size:25px; }
+.lesson-callout strong { display:block; margin-bottom:4px; }
+.lesson-callout p { margin:0; color:#5d6b80; font-size:13px; }
 
-        .frase-item .destaque {
-            color: #ffcc00;
-            font-weight: bold;
-            text-shadow: 0 0 8px #ffcc00;
-        }
+.frame-lab {
+  padding:26px;
+  border:1px solid var(--line);
+  border-radius:24px;
+  background:rgba(4,11,20,.55);
+  box-shadow:var(--shadow);
+}
+.frame-controls {
+  display:flex;
+  gap:12px;
+  margin-bottom:28px;
+}
+.frame-controls label {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.frame-controls .grow { flex:1; }
+.frame-controls input, .frame-controls select {
+  min-height:40px;
+  padding:0 11px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  outline:none;
+  background:var(--soft);
+  color:var(--text);
+  font-size:12px;
+  text-transform:none;
+  letter-spacing:0;
+}
+.frame-bits {
+  display:grid;
+  grid-template-columns:.65fr .9fr 1fr .65fr 1.4fr 1.8fr 2.4fr;
+  min-height:108px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  overflow:hidden;
+}
+.bit-field {
+  min-width:0;
+  padding:12px 9px;
+  border:0;
+  border-right:1px solid var(--line);
+  background:rgba(255,255,255,.025);
+  cursor:pointer;
+  text-align:left;
+  transition:.18s ease;
+}
+.bit-field:last-child { border-right:0; }
+.bit-field:hover, .bit-field.active { background:rgba(105,229,255,.08); }
+.bit-field span, .bit-field strong, .bit-field small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bit-field span { color:var(--muted); font-size:8px; font-weight:900; letter-spacing:.08em; }
+.bit-field strong { margin:12px 0 10px; color:var(--accent); font:900 12px var(--mono); }
+.bit-field small { color:#667990; font-size:8px; }
+.field-explainer {
+  min-height:130px;
+  margin-top:18px;
+  padding:19px 20px;
+  border-radius:16px;
+  background:var(--soft);
+  border:1px solid var(--line);
+}
+.field-explainer h3 { margin:5px 0; font-size:18px; }
+.field-explainer p { margin:0; max-width:850px; color:var(--muted); font-size:13px; }
+.frame-rules {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-top:16px;
+}
+.frame-rules > div {
+  padding:15px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:rgba(255,255,255,.02);
+}
+.frame-rules span { display:block; color:var(--muted); font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.frame-rules strong { display:block; margin:5px 0; font-size:13px; }
+.frame-rules p { margin:0; color:var(--muted); font-size:11px; }
+.opcode-grid {
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:10px;
+  margin-top:18px;
+}
+.opcode-grid > div {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:13px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(255,255,255,.02);
+  font-size:11px;
+}
+.opcode-grid code { color:var(--accent); font-weight:900; }
 
-        .frase-item .autor {
-            color: #00ff41;
-            font-style: normal;
-            font-size: 0.9rem;
-            letter-spacing: 1px;
-            display: block;
-            margin-top: 4px;
-        }
+.comparison-tabs {
+  display:inline-flex;
+  gap:5px;
+  padding:5px;
+  margin-bottom:16px;
+  border:1px solid #e2e7ee;
+  border-radius:14px;
+  background:white;
+}
+.comparison-tab {
+  padding:9px 13px;
+  border:0;
+  border-radius:9px;
+  background:transparent;
+  color:#728094;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:800;
+}
+.comparison-tab.active { color:white; background:#0d1a2e; }
+.comparison-panel {
+  padding:28px;
+  border:1px solid #e2e8f0;
+  border-radius:24px;
+  background:white;
+  box-shadow:0 20px 50px rgba(43,63,90,.07);
+}
+.comparison-visual {
+  display:grid;
+  grid-template-columns:100px 1fr 100px;
+  gap:18px;
+  align-items:center;
+  min-height:160px;
+}
+.compare-node {
+  display:grid; place-items:center;
+  min-height:80px;
+  border:1px solid #e0e6ef;
+  border-radius:16px;
+  background:#f8fafc;
+  font-weight:900;
+  font-size:12px;
+}
+.compare-lanes { position:relative; min-height:120px; }
+.compare-arrow {
+  position:absolute;
+  left:0; right:0;
+  height:28px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#637287;
+  font:800 10px var(--mono);
+}
+.compare-arrow::before {
+  content:"";
+  position:absolute;
+  left:0; right:0;
+  top:50%;
+  height:1px;
+  background:#ccd7e4;
+}
+.compare-arrow span { position:relative; z-index:2; padding:0 8px; background:white; }
+.compare-arrow.ws-1 { top:28px; }
+.compare-arrow.ws-2 { top:68px; }
+.compare-arrow.ws-1 span { color:#0b92ae; }
+.compare-arrow.ws-2 span { color:#6e5fd0; }
+.compare-arrow.poll { height:18px; }
+.compare-arrow.poll span { font-size:8px; }
+.compare-arrow.sse-1 { top:25px; }
+.compare-arrow.sse-2 { top:64px; }
+.comparison-info {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-top:12px;
+}
+.comparison-info > div {
+  padding:15px;
+  border-radius:13px;
+  background:#f7f9fc;
+}
+.comparison-info strong { display:block; margin-top:4px; font-size:13px; }
+.comparison-panel > p { margin:18px 0 0; color:#65748a; font-size:13px; }
+.decision-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin-top:24px;
+}
+.decision-grid article {
+  padding:24px;
+  border:1px solid #e3e8ef;
+  border-radius:20px;
+  background:white;
+}
+.decision-kicker { font-size:10px; font-weight:900; letter-spacing:.1em; }
+.decision-kicker.good { color:#14845a; }
+.decision-kicker.caution { color:#a36d09; }
+.decision-grid h3 { margin:7px 0 12px; font-size:19px; }
+.decision-grid ul { margin:0; padding-left:18px; color:#667489; font-size:13px; }
+.decision-grid li + li { margin-top:5px; }
 
-        /* Rodapé hacker */
-        .footer {
-            margin-top: 25px;
-            padding-top: 15px;
-            border-top: 2px solid #00ff41;
-            color: #00ff41;
-            font-size: 0.8rem;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            animation: pisca 2s infinite;
-        }
+.lifecycle {
+  display:grid;
+  grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;
+  align-items:center;
+}
+.life-step {
+  min-height:100px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:17px;
+  background:rgba(255,255,255,.02);
+  text-align:left;
+  cursor:pointer;
+  transition:.2s;
+}
+.life-step:hover, .life-step.active { background:rgba(105,229,255,.08); border-color:rgba(105,229,255,.28); }
+.life-step span { display:block; color:var(--accent); font:800 10px var(--mono); }
+.life-step strong { display:block; margin:10px 0 4px; font:900 13px var(--mono); }
+.life-step small { color:var(--muted); font:10px var(--mono); }
+.life-line { width:28px; height:1px; background:var(--line); }
+.life-explainer {
+  display:grid;
+  grid-template-columns:110px 1fr;
+  gap:20px;
+  align-items:center;
+  margin-top:18px;
+  padding:22px;
+  border:1px solid var(--line);
+  border-radius:20px;
+  background:rgba(255,255,255,.025);
+}
+.life-state-number {
+  display:grid; place-items:center;
+  width:90px; height:90px;
+  border-radius:24px;
+  background:rgba(105,229,255,.08);
+  color:var(--accent);
+  font:900 34px var(--mono);
+}
+.life-explainer h3 { margin:5px 0; font-size:20px; }
+.life-explainer p { margin:0; color:var(--muted); font-size:13px; }
+.ping-pong {
+  margin-top:20px;
+  padding:24px;
+  border:1px solid var(--line);
+  border-radius:20px;
+  background:rgba(255,255,255,.02);
+}
+.ping-title h3 { margin:4px 0 18px; font-size:20px; }
+.ping-animation {
+  display:grid;
+  grid-template-columns:110px 1fr 110px;
+  gap:10px;
+  align-items:center;
+  min-height:80px;
+}
+.ping-node {
+  display:grid; place-items:center;
+  min-height:52px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:800;
+}
+.ping-lane {
+  position:relative;
+  height:44px;
+  border-top:1px solid rgba(105,229,255,.3);
+  border-bottom:1px solid rgba(139,124,255,.3);
+}
+.ping-ball, .pong-ball {
+  position:absolute;
+  display:grid; place-items:center;
+  min-width:45px; height:20px;
+  border-radius:6px;
+  font:900 8px var(--mono);
+  font-style:normal;
+}
+.ping-ball { top:-11px; color:#07111f; background:var(--accent); animation:pingMove 3s linear infinite; }
+.pong-ball { bottom:-11px; color:white; background:var(--accent-2); animation:pongMove 3s linear infinite; animation-delay:1.5s; opacity:0; }
+@keyframes pingMove { from{left:0;opacity:.2} 10%{opacity:1} 90%{opacity:1} to{left:calc(100% - 45px);opacity:.2} }
+@keyframes pongMove { from{right:0;opacity:.2} 10%{opacity:1} 90%{opacity:1} to{right:calc(100% - 45px);opacity:.2} }
+.ping-pong p { margin:15px 0 0; color:var(--muted); font-size:12px; }
 
-        .footer span {
-            color: #ff0040;
-        }
+.code-layout {
+  display:grid;
+  grid-template-columns:1.15fr .85fr;
+  gap:18px;
+}
+.code-window {
+  overflow:hidden;
+  border-radius:20px;
+  background:#091421;
+  box-shadow:var(--shadow);
+}
+.code-bar { justify-content:space-between; }
+.copy-btn {
+  padding:5px 8px;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:7px;
+  background:rgba(255,255,255,.05);
+  color:#9fb0c5;
+  cursor:pointer;
+  font:800 9px var(--mono);
+}
+.code-window pre {
+  margin:0;
+  padding:23px;
+  overflow:auto;
+  color:#b8c5d6;
+  font:12px/1.75 var(--mono);
+}
+.kw { color:#c7a6ff; }
+.fn { color:#74e4ff; }
+.str { color:#a9e7b8; }
+.prop { color:#ffd385; }
+.code-explanation {
+  display:grid;
+  gap:9px;
+}
+.code-step {
+  display:grid;
+  grid-template-columns:34px 1fr;
+  gap:12px;
+  align-items:start;
+  padding:15px;
+  border:1px solid #e2e7ee;
+  border-radius:15px;
+  background:white;
+}
+.code-step > span {
+  display:grid; place-items:center;
+  width:30px; height:30px;
+  border-radius:9px;
+  color:#087f97;
+  background:#eaf7fa;
+  font:900 10px var(--mono);
+}
+.code-step strong { font-size:12px; }
+.code-step p { margin:3px 0 0; color:#65748a; font-size:11px; }
+.important-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-top:18px;
+}
+.important-card {
+  display:flex;
+  gap:13px;
+  align-items:flex-start;
+  padding:18px;
+  border:1px solid #e3e8ef;
+  border-radius:16px;
+  background:white;
+}
+.important-card > span { font-size:22px; }
+.important-card strong { display:block; }
+.important-card p { margin:4px 0 0; color:#667489; font-size:12px; }
 
-        /* Aviso de imagem */
-        .aviso-img {
-            color: #888;
-            font-size: 0.7rem;
-            margin-top: 10px;
-            background: #1a1a1a;
-            padding: 5px 12px;
-            border-radius: 20px;
-            display: inline-block;
-        }
+.security-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+}
+.security-card {
+  min-height:220px;
+  padding:22px;
+  border:1px solid var(--line);
+  border-radius:19px;
+  background:rgba(255,255,255,.025);
+}
+.security-icon { display:block; margin-bottom:32px; font-size:27px; }
+.security-card h3 { margin:0 0 8px; font-size:17px; }
+.security-card h3 code { color:var(--accent); }
+.security-card p { margin:0; color:var(--muted); font-size:12px; }
 
-        /* Responsivo */
-        @media (max-width: 600px) {
-            h1 { font-size: 2rem; }
-            .frase-item { font-size: 1rem; }
-            .foto-placeholder { width: 150px; height: 150px; }
-        }
-    </style>
+.quiz-shell {
+  max-width:860px;
+  padding:26px;
+  border:1px solid #e2e8ef;
+  border-radius:24px;
+  background:white;
+  box-shadow:0 24px 70px rgba(43,62,93,.08);
+}
+.quiz-progress {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:22px;
+}
+.quiz-progress-bar {
+  flex:1;
+  height:5px;
+  border-radius:999px;
+  background:#edf1f5;
+  overflow:hidden;
+}
+.quiz-progress-bar i {
+  display:block;
+  width:20%;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#13a5c4,#6d60e9);
+  transition:.3s ease;
+}
+.quiz-progress > span { color:#7f8c9e; font-size:10px; font-weight:800; }
+.quiz-card h3 { margin:8px 0 18px; font-size:25px; line-height:1.25; }
+.quiz-options { display:grid; gap:8px; }
+.quiz-option {
+  width:100%;
+  padding:13px 14px;
+  border:1px solid #e0e6ed;
+  border-radius:12px;
+  background:#fbfcfe;
+  color:#2a3749;
+  text-align:left;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:700;
+  transition:.15s ease;
+}
+.quiz-option:hover { border-color:#96dce9; background:#f3fbfd; }
+.quiz-option.correct { border-color:#80d8ac; background:#edf9f3; color:#17633f; }
+.quiz-option.wrong { border-color:#f2a1aa; background:#fff1f3; color:#8d2934; }
+.quiz-feedback {
+  min-height:44px;
+  margin:12px 0 2px;
+  color:#67758a;
+  font-size:12px;
+}
+.quiz-result { text-align:center; padding:22px 0; }
+.quiz-result .score-ring {
+  display:grid; place-items:center;
+  width:120px; height:120px;
+  margin:0 auto 20px;
+  border-radius:50%;
+  background:conic-gradient(#13a5c4 var(--score), #edf1f5 0);
+  position:relative;
+}
+.quiz-result .score-ring::after {
+  content:"";
+  position:absolute;
+  width:92px; height:92px;
+  border-radius:50%;
+  background:white;
+}
+.quiz-result .score-ring strong { position:relative; z-index:2; font-size:24px; }
+.quiz-result h3 { margin:0 0 8px; }
+.quiz-result p { color:#68768a; font-size:13px; }
+
+.final-section {
+  background:
+    radial-gradient(circle at 50% 10%, rgba(105,229,255,.10), transparent 35%),
+    var(--bg);
+}
+.final-card {
+  max-width:980px;
+  margin:0 auto;
+  padding:62px 48px;
+  text-align:center;
+  border:1px solid var(--line);
+  border-radius:32px;
+  background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015));
+  box-shadow:var(--shadow);
+}
+.final-card h2 {
+  margin:15px auto 18px;
+  max-width:900px;
+  font-size:clamp(35px,5vw,60px);
+  line-height:1.04;
+  letter-spacing:-.045em;
+}
+.final-card p { max-width:710px; margin:0 auto 27px; color:var(--muted); }
+.muted-strike { color:#6d7a8e; text-decoration:line-through; text-decoration-thickness:2px; }
+
+footer {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  padding:28px max(24px, calc((100vw - 1180px) / 2));
+  border-top:1px solid var(--line);
+  background:var(--bg);
+  color:var(--muted);
+  font-size:11px;
+}
+footer strong, footer span { display:block; }
+footer strong { color:var(--text); }
+footer p { margin:0; text-align:right; }
+
+.reveal {
+  opacity:0;
+  transform:translateY(20px);
+  transition:opacity .7s ease, transform .7s ease;
+}
+.reveal.visible { opacity:1; transform:none; }
+.delay-1 { transition-delay:.08s; }
+.delay-2 { transition-delay:.16s; }
+.delay-3 { transition-delay:.24s; }
+
+@media (max-width: 1040px) {
+  .nav { display:none; }
+  .topbar { justify-content:space-between; }
+  .hero { grid-template-columns:1fr; gap:36px; min-height:auto; padding-top:150px; }
+  .hero-content { max-width:820px; }
+  .hero-visual { max-width:760px; width:100%; margin:0 auto; }
+  .scroll-hint { display:none; }
+  .concept-grid { grid-template-columns:1fr 1fr; }
+  .handshake-layout { grid-template-columns:1fr; }
+  .security-grid { grid-template-columns:1fr 1fr; }
+  .frame-bits { grid-template-columns:repeat(4,1fr); }
+  .bit-field { min-height:90px; border-bottom:1px solid var(--line); }
+  .payload { grid-column:span 2; }
+  .code-layout { grid-template-columns:1fr; }
+}
+@media (max-width: 760px) {
+  .section { padding:92px 18px; }
+  .topbar { top:10px; width:calc(100% - 20px); }
+  .hide-mobile { display:none; }
+  .hero { padding-top:120px; }
+  .hero h1 { font-size:48px; }
+  .protocol-stage { min-height:440px; }
+  .endpoint { top:125px; width:90px; }
+  .endpoint-client { left:5%; }
+  .endpoint-server { right:5%; }
+  .duplex-line { top:164px; left:28%; right:28%; }
+  .mini-terminal { left:5%; right:5%; bottom:32px; }
+  .section-heading { display:block; }
+  .section-heading .section-number { margin-bottom:16px; }
+  .definition-card { grid-template-columns:1fr; }
+  .concept-grid { grid-template-columns:1fr; }
+  .concept-card { min-height:0; }
+  .concept-icon { margin-bottom:20px; }
+  .myth-fact { grid-template-columns:1fr; }
+  .divider-arrow { transform:rotate(90deg); margin:auto; }
+  .layer { grid-template-columns:1fr; gap:3px; }
+  .handshake-diagram { grid-template-columns:78px 1fr 78px; padding:16px 10px; }
+  .actor-avatar { width:48px; height:48px; font-size:21px; }
+  .flow-arrow span { font-size:8px; }
+  .handshake-details { grid-template-columns:1fr; }
+  .sim-toolbar { align-items:flex-start; flex-direction:column; }
+  .socket-stage { grid-template-columns:1fr; }
+  .socket-wire { min-height:100px; transform:rotate(90deg); }
+  .socket-party { position:relative; z-index:3; }
+  .log-row { grid-template-columns:58px 65px 1fr; }
+  .log-kind { display:none; }
+  .frame-controls { flex-direction:column; }
+  .frame-bits { grid-template-columns:1fr 1fr; }
+  .bit-field { border-bottom:1px solid var(--line); }
+  .payload { grid-column:span 2; }
+  .frame-rules { grid-template-columns:1fr; }
+  .opcode-grid { grid-template-columns:1fr 1fr; }
+  .comparison-visual { grid-template-columns:72px 1fr 72px; gap:8px; }
+  .comparison-info { grid-template-columns:1fr; }
+  .decision-grid { grid-template-columns:1fr; }
+  .lifecycle { grid-template-columns:1fr 1fr; gap:8px; }
+  .life-line { display:none; }
+  .life-explainer { grid-template-columns:1fr; }
+  .ping-animation { grid-template-columns:78px 1fr 78px; }
+  .important-grid { grid-template-columns:1fr; }
+  .security-grid { grid-template-columns:1fr; }
+  .final-card { padding:42px 22px; }
+  footer { flex-direction:column; align-items:flex-start; }
+  footer p { text-align:left; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior:auto; }
+  *, *::before, *::after {
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+  }
+  .reveal { opacity:1; transform:none; }
+}
+
+</style>
 </head>
 <body>
+  <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
+  <div class="noise" aria-hidden="true"></div>
 
-    <div class="container">
+  <header class="topbar">
+    <a class="brand" href="#inicio" aria-label="Voltar ao início">
+      <span class="brand-mark">&lt;/&gt;</span>
+      <span>WebSocket <b>Lab</b></span>
+    </a>
 
-        <!-- Tag hacker -->
-        <div class="hacker-tag">// DEFACEMENT · HACKED BY AMOR · LULA 13 //</div>
+    <nav class="nav" aria-label="Navegação principal">
+      <a href="#conceito">Conceito</a>
+      <a href="#handshake">Handshake</a>
+      <a href="#simulador">Simulador</a>
+      <a href="#frames">Frames</a>
+      <a href="#comparacao">Comparação</a>
+      <a href="#quiz">Quiz</a>
+    </nav>
 
-        <!-- Título -->
-        <h1>LULA <span>13</span></h1>
-        <div class="subtitle">#O Brasil Voltou</div>
+    <button class="ghost-btn compact" id="themeToggle" type="button" aria-label="Alternar tema">
+      <span id="themeIcon">☾</span>
+      <span class="hide-mobile">Tema</span>
+    </button>
+  </header>
 
-        <div class="foto-area">
-            <div class="foto-placeholder">
-             
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Foto_oficial_do_Presidente_da_Rep%C3%BAblica_Luiz_In%C3%A1cio_Lula_da_Silva.jpg/500px-Foto_oficial_do_Presidente_da_Rep%C3%BAblica_Luiz_In%C3%A1cio_Lula_da_Silva.jpg" alt="">
+  <main>
+    <section class="hero section" id="inicio">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-orb orb-a" aria-hidden="true"></div>
+      <div class="hero-orb orb-b" aria-hidden="true"></div>
 
-            </div>
-        </div>
-        <div class="aviso-img">⬆️ Substitua o placeholder pela sua imagem ⬆️</div>
-
-        <!-- FRASES DO LULA -->
-        <div class="frases-box">
-            <h2>⚡ Frases que inspiram ⚡</h2>
-
-            <div class="frase-item">
-                “A esperança <span class="destaque">venceu o medo</span>.”
-                <span class="autor">— Lula, 2022</span>
-            </div>
-
-            <div class="frase-item">
-                “Ninguém solta a mão de <span class="destaque">ninguém</span>.”
-                <span class="autor">— Lula, 2023</span>
-            </div>
-
-            <div class="frase-item">
-                “O Brasil <span class="destaque">voltou</span> a ser um país que sonha.”
-                <span class="autor">— Lula, 2023</span>
-            </div>
-
-            <div class="frase-item">
-                “Eu quero um país onde as pessoas possam <span class="destaque">jantar</span>.”
-                <span class="autor">— Lula, 2002</span>
-            </div>
-
-            <div class="frase-item">
-                “A democracia é <span class="destaque">indispensável</span>.”
-                <span class="autor">— Lula, 2024</span>
-            </div>
-
-            <div class="frase-item">
-                “Se eu não tivesse amor, não teria <span class="destaque">paciência</span>.”
-                <span class="autor">— Lula, 2023</span>
-            </div>
+      <div class="hero-content reveal">
+        <div class="eyebrow">
+          <span class="live-dot"></span>
+          PROTOCOLO EM TEMPO REAL • RFC 6455
         </div>
 
-        <!-- Rodapé -->
-        <div class="footer">
-            <span>✦</span> LULA PRESIDENTE · 2026 <span>✦</span><br>
-            <small style="opacity:0.6;">#Paz #Amor #Democracia</small>
+        <h1>
+          Entenda <span class="gradient-text">WebSocket</span><br />
+          vendo a conexão acontecer.
+        </h1>
+
+        <p class="hero-subtitle">
+          Um canal persistente, bidirecional e full-duplex entre cliente e servidor,
+          construído para trocar mensagens com baixa sobrecarga depois que a conexão é estabelecida.
+        </p>
+
+        <div class="hero-actions">
+          <a class="primary-btn" href="#simulador">Abrir simulador <span>→</span></a>
+          <a class="secondary-btn" href="#conceito">Começar do zero</a>
         </div>
 
+        <div class="hero-pills" aria-label="Características principais">
+          <span>↔ Full-duplex</span>
+          <span>⚡ Baixa sobrecarga</span>
+          <span>🔒 ws:// e wss://</span>
+          <span>📡 Conexão persistente</span>
+        </div>
+      </div>
+
+      <div class="hero-visual reveal delay-1" aria-label="Ilustração animada de cliente e servidor">
+        <div class="protocol-stage">
+          <div class="stage-label">CONEXÃO ATIVA</div>
+
+          <div class="endpoint endpoint-client">
+            <div class="endpoint-icon">💻</div>
+            <strong>Cliente</strong>
+            <small>Browser / App</small>
+          </div>
+
+          <div class="duplex-line">
+            <div class="packet packet-a">101</div>
+            <div class="packet packet-b">{ }</div>
+            <div class="packet packet-c">↔</div>
+            <div class="line-glow"></div>
+          </div>
+
+          <div class="endpoint endpoint-server">
+            <div class="endpoint-icon">🖥</div>
+            <strong>Servidor</strong>
+            <small>WebSocket</small>
+          </div>
+
+          <div class="mini-terminal">
+            <div><span class="prompt">&gt;</span> new WebSocket(...)</div>
+            <div><span class="ok">●</span> OPEN</div>
+            <div><span class="prompt">&gt;</span> send("Olá!")</div>
+            <div><span class="server-msg">&lt;</span> message: "Olá!"</div>
+          </div>
+        </div>
+      </div>
+
+      <a class="scroll-hint" href="#conceito" aria-label="Rolar para o conteúdo">
+        <span>role para aprender</span>
+        <i>↓</i>
+      </a>
+    </section>
+
+    <section class="section content-section" id="conceito">
+      <div class="section-heading reveal">
+        <span class="section-number">01</span>
+        <div>
+          <div class="eyebrow">PRIMEIRO, O ESSENCIAL</div>
+          <h2>O que é WebSocket, exatamente?</h2>
+        </div>
+      </div>
+
+      <div class="definition-card reveal">
+        <div class="definition-icon">↔</div>
+        <div>
+          <span class="micro-label">DEFINIÇÃO</span>
+          <p>
+            <strong>WebSocket é um protocolo de comunicação</strong> que mantém uma conexão
+            aberta entre cliente e servidor e permite que <strong>os dois lados enviem dados
+            a qualquer momento</strong> pela mesma conexão.
+          </p>
+        </div>
+      </div>
+
+      <div class="concept-grid">
+        <article class="concept-card reveal">
+          <div class="concept-icon">🔌</div>
+          <h3>1 conexão persistente</h3>
+          <p>
+            Depois do handshake, cliente e servidor continuam conectados. Não é necessário
+            abrir uma nova requisição HTTP para cada mensagem.
+          </p>
+        </article>
+
+        <article class="concept-card reveal delay-1">
+          <div class="concept-icon">↔</div>
+          <h3>Full-duplex</h3>
+          <p>
+            Cliente e servidor podem transmitir simultaneamente. O servidor não precisa
+            esperar o cliente perguntar se existe uma atualização.
+          </p>
+        </article>
+
+        <article class="concept-card reveal delay-2">
+          <div class="concept-icon">📦</div>
+          <h3>Mensagens em frames</h3>
+          <p>
+            Depois do upgrade, os dados deixam de ser trocados como requisições HTTP e passam
+            a viajar em <em>frames WebSocket</em>.
+          </p>
+        </article>
+
+        <article class="concept-card reveal delay-3">
+          <div class="concept-icon">⚡</div>
+          <h3>Baixa sobrecarga</h3>
+          <p>
+            O cabeçalho de cada frame costuma ser pequeno em comparação com repetir cabeçalhos
+            HTTP completos em cada atualização.
+          </p>
+        </article>
+      </div>
+
+      <div class="myth-fact reveal">
+        <div class="myth">
+          <span>✕ NÃO É</span>
+          <p>“Uma requisição HTTP que fica carregando para sempre.”</p>
+        </div>
+        <div class="divider-arrow">→</div>
+        <div class="fact">
+          <span>✓ É</span>
+          <p>Um protocolo próprio que normalmente começa com um handshake HTTP e depois muda para frames WebSocket.</p>
+        </div>
+      </div>
+
+      <div class="protocol-stack reveal">
+        <div class="stack-title">
+          <span class="micro-label">PILHA SIMPLIFICADA</span>
+          <h3>Onde ele fica na comunicação?</h3>
+        </div>
+
+        <div class="stack-layers">
+          <div class="layer app">
+            <span>Aplicação</span>
+            <strong>Chat • Dashboard • Jogo • Colaboração</strong>
+          </div>
+          <div class="layer websocket">
+            <span>WebSocket</span>
+            <strong>Frames • Mensagens • Ping/Pong • Close</strong>
+          </div>
+          <div class="layer tls">
+            <span>TLS <em>(quando wss://)</em></span>
+            <strong>Criptografia e proteção em trânsito</strong>
+          </div>
+          <div class="layer tcp">
+            <span>TCP</span>
+            <strong>Canal confiável e ordenado de bytes</strong>
+          </div>
+          <div class="layer ip">
+            <span>IP / Rede</span>
+            <strong>Entrega dos pacotes pela rede</strong>
+          </div>
+        </div>
+
+        <p class="note">
+          <strong>ws://</strong> usa WebSocket sem TLS. <strong>wss://</strong> usa WebSocket
+          protegido por TLS — o equivalente seguro e recomendado em produção.
+        </p>
+      </div>
+    </section>
+
+    <section class="section dark-section" id="handshake">
+      <div class="section-heading reveal">
+        <span class="section-number">02</span>
+        <div>
+          <div class="eyebrow">A CONEXÃO NASCE ASSIM</div>
+          <h2>O handshake HTTP → WebSocket</h2>
+          <p>
+            No modelo clássico do RFC 6455, a conexão começa como HTTP/1.1 e o cliente pede
+            para trocar o protocolo para WebSocket.
+          </p>
+        </div>
+      </div>
+
+      <div class="handshake-layout">
+        <div class="handshake-diagram reveal">
+          <div class="actor">
+            <div class="actor-avatar">💻</div>
+            <strong>Cliente</strong>
+            <small>browser</small>
+          </div>
+
+          <div class="handshake-flow" id="handshakeFlow">
+            <div class="flow-step" data-step="1">
+              <span class="flow-tag">1</span>
+              <div class="flow-arrow right">
+                <span>HTTP GET + Upgrade</span>
+                <i>→</i>
+              </div>
+            </div>
+            <div class="flow-step" data-step="2">
+              <span class="flow-tag">2</span>
+              <div class="flow-arrow left">
+                <i>←</i>
+                <span>101 Switching Protocols</span>
+              </div>
+            </div>
+            <div class="flow-step" data-step="3">
+              <span class="flow-tag">3</span>
+              <div class="flow-arrow duplex">
+                <i>↔</i>
+                <span>Frames WebSocket</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="actor">
+            <div class="actor-avatar">🖥</div>
+            <strong>Servidor</strong>
+            <small>websocket</small>
+          </div>
+        </div>
+
+        <div class="handshake-console reveal delay-1">
+          <div class="console-bar">
+            <div class="console-dots"><i></i><i></i><i></i></div>
+            <span>handshake inspector</span>
+            <span id="handshakeStatus" class="status-badge idle">AGUARDANDO</span>
+          </div>
+
+          <div class="console-body" id="handshakeConsole">
+            <div class="console-placeholder">
+              <span class="big-icon">⌁</span>
+              <p>Clique no botão para acompanhar cada etapa do handshake.</p>
+            </div>
+          </div>
+
+          <div class="console-actions">
+            <button class="primary-btn small" id="startHandshake" type="button">
+              ▶ Iniciar handshake
+            </button>
+            <button class="ghost-btn small" id="resetHandshake" type="button">
+              ↻ Reiniciar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="handshake-details reveal">
+        <div class="detail">
+          <code>Sec-WebSocket-Key</code>
+          <p>
+            Nonce aleatório enviado pelo cliente. O servidor combina esse valor com um GUID
+            definido pelo protocolo, calcula SHA-1 e retorna o resultado em Base64.
+          </p>
+        </div>
+        <div class="detail">
+          <code>101 Switching Protocols</code>
+          <p>
+            Confirma o upgrade no handshake HTTP/1.1. A partir daí, aquela conexão passa a
+            carregar frames WebSocket.
+          </p>
+        </div>
+        <div class="detail">
+          <code>Sec-WebSocket-Version: 13</code>
+          <p>
+            Indica a versão padronizada pelo RFC 6455. A versão 13 é a versão usada pelo
+            protocolo WebSocket padronizado.
+          </p>
+        </div>
+      </div>
+
+      <div class="advanced-note reveal">
+        <span>Detalhe técnico</span>
+        <p>
+          WebSocket também pode ser inicializado sobre HTTP/2 usando <strong>Extended CONNECT</strong>
+          (RFC 8441). O fluxo acima mostra o handshake clássico HTTP/1.1 do RFC 6455, que é o
+          melhor ponto de partida para entender o protocolo.
+        </p>
+      </div>
+    </section>
+
+    <section class="section content-section" id="simulador">
+      <div class="section-heading reveal">
+        <span class="section-number">03</span>
+        <div>
+          <div class="eyebrow">AGORA VOCÊ CONTROLA</div>
+          <h2>Simulador de uma conexão WebSocket</h2>
+          <p>Abra a conexão e envie mensagens dos dois lados. Tudo abaixo é uma simulação visual do protocolo.</p>
+        </div>
+      </div>
+
+      <div class="simulator reveal">
+        <div class="sim-toolbar">
+          <div class="connection-readout">
+            <span class="socket-led" id="socketLed"></span>
+            <div>
+              <small>ESTADO DA CONEXÃO</small>
+              <strong id="connectionState">CLOSED</strong>
+            </div>
+          </div>
+
+          <div class="toolbar-actions">
+            <button class="primary-btn small" id="connectBtn" type="button">Conectar</button>
+            <button class="danger-btn small" id="disconnectBtn" type="button" disabled>Fechar conexão</button>
+            <label class="switch-label">
+              <span>Eventos automáticos</span>
+              <input type="checkbox" id="autoEvents" />
+              <i class="switch"></i>
+            </label>
+          </div>
+        </div>
+
+        <div class="socket-stage">
+          <div class="socket-party client-party">
+            <div class="party-heading">
+              <span class="party-avatar">💻</span>
+              <div>
+                <strong>Cliente</strong>
+                <small>JavaScript no browser</small>
+              </div>
+            </div>
+
+            <div class="composer">
+              <input id="clientMessage" type="text" maxlength="100" placeholder='Digite: "Olá, servidor!"' />
+              <button id="clientSend" type="button" disabled aria-label="Enviar do cliente">➤</button>
+            </div>
+          </div>
+
+          <div class="socket-wire" id="socketWire">
+            <div class="wire-label">ws://</div>
+            <div class="wire-track"></div>
+            <div class="wire-center">↔</div>
+          </div>
+
+          <div class="socket-party server-party">
+            <div class="party-heading">
+              <span class="party-avatar">🖥</span>
+              <div>
+                <strong>Servidor</strong>
+                <small>Backend WebSocket</small>
+              </div>
+            </div>
+
+            <div class="composer">
+              <input id="serverMessage" type="text" maxlength="100" placeholder='Digite: "Recebido!"' />
+              <button id="serverSend" type="button" disabled aria-label="Enviar do servidor">➤</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="message-log">
+          <div class="log-header">
+            <div>
+              <span class="micro-label">TRÁFEGO</span>
+              <strong>Mensagens e eventos</strong>
+            </div>
+            <button class="ghost-btn tiny" id="clearLog" type="button">Limpar</button>
+          </div>
+          <div class="log-body" id="messageLog" aria-live="polite">
+            <div class="empty-log">
+              <span>◎</span>
+              <p>Conecte para começar a simulação.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lesson-callout reveal">
+        <div class="lesson-icon">💡</div>
+        <div>
+          <strong>O detalhe que muda tudo</strong>
+          <p>
+            Depois que a conexão está em <code>OPEN</code>, o servidor pode enviar uma mensagem
+            <strong>sem receber uma nova requisição do cliente</strong>. É isso que diferencia
+            WebSocket de um fluxo tradicional de request/response HTTP.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dark-section" id="frames">
+      <div class="section-heading reveal">
+        <span class="section-number">04</span>
+        <div>
+          <div class="eyebrow">POR BAIXO DO CAPÔ</div>
+          <h2>Como um frame WebSocket é montado?</h2>
+          <p>
+            Uma mensagem pode ocupar um ou vários frames. O cabeçalho indica como interpretar o payload.
+          </p>
+        </div>
+      </div>
+
+      <div class="frame-lab reveal">
+        <div class="frame-controls">
+          <label>
+            Tipo de frame
+            <select id="frameType">
+              <option value="text">Texto — opcode 0x1</option>
+              <option value="binary">Binário — opcode 0x2</option>
+              <option value="ping">Ping — opcode 0x9</option>
+              <option value="pong">Pong — opcode 0xA</option>
+              <option value="close">Close — opcode 0x8</option>
+            </select>
+          </label>
+
+          <label class="grow">
+            Payload de demonstração
+            <input id="framePayload" value="Olá WebSocket!" maxlength="125" />
+          </label>
+
+          <label>
+            Direção
+            <select id="frameDirection">
+              <option value="client">Cliente → Servidor</option>
+              <option value="server">Servidor → Cliente</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="frame-bits" id="frameBits">
+          <button class="bit-field fin active" data-field="fin">
+            <span>FIN</span><strong>1</strong><small>1 bit</small>
+          </button>
+          <button class="bit-field rsv" data-field="rsv">
+            <span>RSV1-3</span><strong>000</strong><small>3 bits</small>
+          </button>
+          <button class="bit-field opcode" data-field="opcode">
+            <span>OPCODE</span><strong id="opcodeValue">0001</strong><small>4 bits</small>
+          </button>
+          <button class="bit-field mask" data-field="mask">
+            <span>MASK</span><strong id="maskValue">1</strong><small>1 bit</small>
+          </button>
+          <button class="bit-field length" data-field="length">
+            <span>PAYLOAD LEN</span><strong id="payloadLenBits">0001111</strong><small>7+ bits</small>
+          </button>
+          <button class="bit-field key" data-field="key">
+            <span>MASKING KEY</span><strong id="maskingKeyValue">A1 3C F0 27</strong><small>32 bits</small>
+          </button>
+          <button class="bit-field payload" data-field="payload">
+            <span>PAYLOAD</span><strong id="payloadPreview">Olá WebSocket!</strong><small id="payloadBytes">15 bytes</small>
+          </button>
+        </div>
+
+        <div class="field-explainer" id="fieldExplainer">
+          <span class="micro-label">CAMPO SELECIONADO</span>
+          <h3>FIN</h3>
+          <p>Quando vale 1, este é o último frame da mensagem. Uma mensagem fragmentada pode usar vários frames.</p>
+        </div>
+
+        <div class="frame-rules">
+          <div>
+            <span>Cliente → servidor</span>
+            <strong>MASK = 1 obrigatório</strong>
+            <p>Frames enviados por clientes precisam ser mascarados com uma chave aleatória de 32 bits.</p>
+          </div>
+          <div>
+            <span>Servidor → cliente</span>
+            <strong>MASK = 0 obrigatório</strong>
+            <p>O servidor não mascara os frames enviados ao cliente.</p>
+          </div>
+          <div>
+            <span>Frames de controle</span>
+            <strong>≤ 125 bytes</strong>
+            <p>Close, Ping e Pong não podem ser fragmentados e têm payload máximo de 125 bytes.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="opcode-grid reveal">
+        <div><code>0x0</code><span>Continuation</span></div>
+        <div><code>0x1</code><span>Text</span></div>
+        <div><code>0x2</code><span>Binary</span></div>
+        <div><code>0x8</code><span>Close</span></div>
+        <div><code>0x9</code><span>Ping</span></div>
+        <div><code>0xA</code><span>Pong</span></div>
+      </div>
+    </section>
+
+    <section class="section content-section" id="comparacao">
+      <div class="section-heading reveal">
+        <span class="section-number">05</span>
+        <div>
+          <div class="eyebrow">ESCOLHA A FERRAMENTA CERTA</div>
+          <h2>WebSocket vs Polling vs SSE</h2>
+          <p>“Tempo real” pode ser implementado de formas diferentes. WebSocket não é a resposta para tudo.</p>
+        </div>
+      </div>
+
+      <div class="comparison-tabs reveal" role="tablist" aria-label="Comparar tecnologias">
+        <button class="comparison-tab active" data-tech="websocket" type="button">WebSocket</button>
+        <button class="comparison-tab" data-tech="polling" type="button">HTTP Polling</button>
+        <button class="comparison-tab" data-tech="sse" type="button">SSE</button>
+      </div>
+
+      <div class="comparison-panel reveal" id="comparisonPanel">
+        <div class="comparison-visual">
+          <div class="compare-node">Cliente</div>
+          <div class="compare-lanes" id="compareLanes"></div>
+          <div class="compare-node">Servidor</div>
+        </div>
+
+        <div class="comparison-info">
+          <div>
+            <span class="micro-label">COMUNICAÇÃO</span>
+            <strong id="compareDirection">Bidirecional</strong>
+          </div>
+          <div>
+            <span class="micro-label">CONEXÃO</span>
+            <strong id="compareConnection">Persistente</strong>
+          </div>
+          <div>
+            <span class="micro-label">MELHOR PARA</span>
+            <strong id="compareBest">Interação em tempo real nos dois sentidos</strong>
+          </div>
+        </div>
+
+        <p id="compareDescription">
+          Uma única conexão permanece ativa e os dois lados enviam mensagens quando necessário.
+        </p>
+      </div>
+
+      <div class="decision-grid reveal">
+        <article>
+          <span class="decision-kicker good">USE WEBSOCKET QUANDO</span>
+          <h3>Existe conversa contínua nos dois sentidos</h3>
+          <ul>
+            <li>Chats e mensageria instantânea</li>
+            <li>Jogos multiplayer</li>
+            <li>Dashboards operacionais em tempo real</li>
+            <li>Colaboração simultânea</li>
+            <li>Notificações + comandos interativos</li>
+          </ul>
+        </article>
+
+        <article>
+          <span class="decision-kicker caution">TALVEZ NÃO PRECISE</span>
+          <h3>O fluxo é simples ou esporádico</h3>
+          <ul>
+            <li>CRUD tradicional e APIs REST</li>
+            <li>Páginas que atualizam raramente</li>
+            <li>Somente servidor → cliente: SSE pode bastar</li>
+            <li>Processos que não exigem baixa latência</li>
+            <li>Infraestrutura que não precisa manter conexões longas</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section dark-section" id="ciclo">
+      <div class="section-heading reveal">
+        <span class="section-number">06</span>
+        <div>
+          <div class="eyebrow">DO NASCIMENTO AO ENCERRAMENTO</div>
+          <h2>Ciclo de vida de uma conexão</h2>
+        </div>
+      </div>
+
+      <div class="lifecycle reveal">
+        <button class="life-step active" data-life="connecting" type="button">
+          <span>01</span><strong>CONNECTING</strong><small>readyState = 0</small>
+        </button>
+        <div class="life-line"></div>
+        <button class="life-step" data-life="open" type="button">
+          <span>02</span><strong>OPEN</strong><small>readyState = 1</small>
+        </button>
+        <div class="life-line"></div>
+        <button class="life-step" data-life="closing" type="button">
+          <span>03</span><strong>CLOSING</strong><small>readyState = 2</small>
+        </button>
+        <div class="life-line"></div>
+        <button class="life-step" data-life="closed" type="button">
+          <span>04</span><strong>CLOSED</strong><small>readyState = 3</small>
+        </button>
+      </div>
+
+      <div class="life-explainer reveal" id="lifeExplainer">
+        <div class="life-state-number">0</div>
+        <div>
+          <span class="micro-label">WebSocket.CONNECTING</span>
+          <h3>A conexão ainda está sendo estabelecida.</h3>
+          <p>O construtor foi chamado, mas o handshake ainda não terminou. Ainda não é possível enviar mensagens.</p>
+        </div>
+      </div>
+
+      <div class="ping-pong reveal">
+        <div class="ping-title">
+          <span class="micro-label">KEEPALIVE / SAÚDE DA CONEXÃO</span>
+          <h3>Ping ↔ Pong</h3>
+        </div>
+        <div class="ping-animation">
+          <span class="ping-node">Endpoint A</span>
+          <div class="ping-lane">
+            <i class="ping-ball">PING</i>
+            <i class="pong-ball">PONG</i>
+          </div>
+          <span class="ping-node">Endpoint B</span>
+        </div>
+        <p>
+          Ping e Pong são frames de controle do protocolo. Na API nativa <code>WebSocket</code> do navegador,
+          esses frames não são expostos diretamente ao JavaScript; o navegador cuida do comportamento protocolar.
+        </p>
+      </div>
+    </section>
+
+    <section class="section content-section" id="codigo">
+      <div class="section-heading reveal">
+        <span class="section-number">07</span>
+        <div>
+          <div class="eyebrow">DO CONCEITO AO CÓDIGO</div>
+          <h2>Como fica no JavaScript?</h2>
+        </div>
+      </div>
+
+      <div class="code-layout">
+        <div class="code-window reveal">
+          <div class="code-bar">
+            <span>client.js</span>
+            <button class="copy-btn" data-copy="clientCode" type="button">Copiar</button>
+          </div>
+<pre id="clientCode"><code><span class="kw">const</span> socket = <span class="kw">new</span> <span class="fn">WebSocket</span>(<span class="str">"wss://exemplo.com/ws"</span>);
+
+socket.<span class="prop">addEventListener</span>(<span class="str">"open"</span>, () =&gt; {
+  console.<span class="prop">log</span>(<span class="str">"Conectado!"</span>);
+  socket.<span class="prop">send</span>(<span class="str">"Olá, servidor!"</span>);
+});
+
+socket.<span class="prop">addEventListener</span>(<span class="str">"message"</span>, (event) =&gt; {
+  console.<span class="prop">log</span>(<span class="str">"Recebido:"</span>, event.<span class="prop">data</span>);
+});
+
+socket.<span class="prop">addEventListener</span>(<span class="str">"close"</span>, (event) =&gt; {
+  console.<span class="prop">log</span>(<span class="str">"Fechou:"</span>, event.<span class="prop">code</span>);
+});
+
+socket.<span class="prop">addEventListener</span>(<span class="str">"error"</span>, (error) =&gt; {
+  console.<span class="prop">error</span>(<span class="str">"Erro no WebSocket"</span>, error);
+});</code></pre>
+        </div>
+
+        <div class="code-explanation reveal delay-1">
+          <div class="code-step">
+            <span>1</span>
+            <div><strong><code>new WebSocket(url)</code></strong><p>Inicia o handshake e cria o objeto da conexão.</p></div>
+          </div>
+          <div class="code-step">
+            <span>2</span>
+            <div><strong><code>open</code></strong><p>Dispara quando a conexão chega ao estado OPEN.</p></div>
+          </div>
+          <div class="code-step">
+            <span>3</span>
+            <div><strong><code>send()</code></strong><p>Envia texto, Blob, ArrayBuffer ou ArrayBufferView.</p></div>
+          </div>
+          <div class="code-step">
+            <span>4</span>
+            <div><strong><code>message</code></strong><p>Entrega ao cliente uma mensagem recebida do servidor.</p></div>
+          </div>
+          <div class="code-step">
+            <span>5</span>
+            <div><strong><code>close()</code></strong><p>Inicia o encerramento da conexão usando um frame Close.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="important-grid reveal">
+        <div class="important-card">
+          <span>⚠</span>
+          <div>
+            <strong>Reconexão não é automática</strong>
+            <p>A API nativa do navegador não reconecta sozinha. A aplicação precisa implementar retry/backoff quando isso for desejado.</p>
+          </div>
+        </div>
+        <div class="important-card">
+          <span>🧠</span>
+          <div>
+            <strong>TCP confiável ≠ “mensagem garantida para sempre”</strong>
+            <p>TCP ordena e retransmite enquanto a conexão existe, mas a aplicação ainda precisa tratar quedas, retomada e consistência.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dark-section" id="seguranca">
+      <div class="section-heading reveal">
+        <span class="section-number">08</span>
+        <div>
+          <div class="eyebrow">PRODUÇÃO DE VERDADE</div>
+          <h2>Segurança e boas práticas</h2>
+        </div>
+      </div>
+
+      <div class="security-grid">
+        <article class="security-card reveal">
+          <span class="security-icon">🔒</span>
+          <h3>Use <code>wss://</code></h3>
+          <p>Proteja credenciais e mensagens com TLS. Em produção, WebSocket sem criptografia raramente é apropriado.</p>
+        </article>
+        <article class="security-card reveal delay-1">
+          <span class="security-icon">🪪</span>
+          <h3>Autentique e autorize</h3>
+          <p>Validar quem abriu o socket não basta: confira também se aquele usuário pode executar cada ação recebida.</p>
+        </article>
+        <article class="security-card reveal delay-2">
+          <span class="security-icon">🌐</span>
+          <h3>Valide <code>Origin</code></h3>
+          <p>Ajuda a reduzir riscos de Cross-Site WebSocket Hijacking quando autenticação baseada em cookies está envolvida.</p>
+        </article>
+        <article class="security-card reveal">
+          <span class="security-icon">📏</span>
+          <h3>Limite payload e frequência</h3>
+          <p>Defina tamanho máximo, rate limiting, timeout e proteção contra clientes que mantêm conexões abusivas.</p>
+        </article>
+        <article class="security-card reveal delay-1">
+          <span class="security-icon">✅</span>
+          <h3>Valide cada mensagem</h3>
+          <p>Trate conteúdo recebido como entrada não confiável. Valide schema, tipo, tamanho e regras de negócio.</p>
+        </article>
+        <article class="security-card reveal delay-2">
+          <span class="security-icon">📊</span>
+          <h3>Observe a conexão</h3>
+          <p>Monitore conexões ativas, latência, erros, fechamentos, filas de saída e consumo de memória.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section content-section" id="quiz">
+      <div class="section-heading reveal">
+        <span class="section-number">09</span>
+        <div>
+          <div class="eyebrow">TESTE O QUE APRENDEU</div>
+          <h2>Quiz relâmpago</h2>
+          <p>5 perguntas. O resultado aparece na hora.</p>
+        </div>
+      </div>
+
+      <div class="quiz-shell reveal">
+        <div class="quiz-progress">
+          <div class="quiz-progress-bar"><i id="quizProgress"></i></div>
+          <span id="quizCounter">Pergunta 1 de 5</span>
+        </div>
+
+        <div class="quiz-card" id="quizCard">
+          <span class="micro-label">PERGUNTA</span>
+          <h3 id="quizQuestion"></h3>
+          <div class="quiz-options" id="quizOptions"></div>
+          <div class="quiz-feedback" id="quizFeedback"></div>
+          <button class="primary-btn small" id="nextQuestion" type="button" disabled>Próxima →</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section final-section">
+      <div class="final-card reveal">
+        <div class="eyebrow">SE VOCÊ LEMBRAR DE UMA COISA...</div>
+        <h2>
+          WebSocket transforma a comunicação de
+          <span class="muted-strike">“pergunte e espere”</span>
+          para <span class="gradient-text">“mantenha o canal aberto e converse”</span>.
+        </h2>
+        <p>
+          O handshake estabelece a conexão. Depois disso, frames leves carregam mensagens
+          nos dois sentidos até o encerramento.
+        </p>
+        <a class="primary-btn" href="#inicio">Revisar do começo ↑</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div>
+      <strong>WebSocket Lab</strong>
+      <span>Material didático interativo</span>
     </div>
+    <p>
+      Base conceitual: RFC 6455 (WebSocket Protocol) e RFC 8441 (bootstrapping sobre HTTP/2).
+    </p>
+  </footer>
 
+  <script>
+(() => {
+  "use strict";
+
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Reading progress
+  const readingProgress = $("#readingProgress");
+  const updateProgress = () => {
+    const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
+    readingProgress.style.width = `${progress}%`;
+  };
+  window.addEventListener("scroll", updateProgress, { passive: true });
+  updateProgress();
+
+  // Reveal on scroll
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.12 }
+  );
+  $$(".reveal").forEach((el) => observer.observe(el));
+
+  // Theme
+  const themeToggle = $("#themeToggle");
+  const themeIcon = $("#themeIcon");
+  const storedTheme = localStorage.getItem("ws-lab-theme");
+  if (storedTheme === "light") {
+    document.body.classList.add("light-theme");
+    themeIcon.textContent = "☀";
+  }
+  themeToggle.addEventListener("click", () => {
+    const light = document.body.classList.toggle("light-theme");
+    themeIcon.textContent = light ? "☀" : "☾";
+    localStorage.setItem("ws-lab-theme", light ? "light" : "dark");
+  });
+
+  // Handshake animation
+  const handshakeConsole = $("#handshakeConsole");
+  const handshakeStatus = $("#handshakeStatus");
+  const startHandshake = $("#startHandshake");
+  const resetHandshake = $("#resetHandshake");
+  const handshakeSteps = $$(".flow-step");
+  let handshakeRunning = false;
+
+  const requestLines = [
+    '<span class="system">→ CLIENTE ABRE UMA CONEXÃO</span>',
+    'GET /socket HTTP/1.1',
+    '<span class="header">Host:</span> <span class="value">exemplo.com</span>',
+    '<span class="header">Upgrade:</span> <span class="value">websocket</span>',
+    '<span class="header">Connection:</span> <span class="value">Upgrade</span>',
+    '<span class="header">Sec-WebSocket-Key:</span> <span class="value">dGhlIHNhbXBsZSBub25jZQ==</span>',
+    '<span class="header">Sec-WebSocket-Version:</span> <span class="value">13</span>'
+  ];
+
+  const responseLines = [
+    '<span class="system">← SERVIDOR ACEITA O UPGRADE</span>',
+    'HTTP/1.1 101 Switching Protocols',
+    '<span class="header">Upgrade:</span> <span class="value">websocket</span>',
+    '<span class="header">Connection:</span> <span class="value">Upgrade</span>',
+    '<span class="header">Sec-WebSocket-Accept:</span> <span class="value">s3pPLMBiTxaQ9kYGzzhZRbK+xOo=</span>'
+  ];
+
+  const appendConsoleLine = (html, className = "") => {
+    const line = document.createElement("div");
+    line.className = `console-line ${className}`;
+    line.innerHTML = html;
+    handshakeConsole.appendChild(line);
+    handshakeConsole.scrollTop = handshakeConsole.scrollHeight;
+  };
+
+  async function playHandshake() {
+    if (handshakeRunning) return;
+    handshakeRunning = true;
+    startHandshake.disabled = true;
+    handshakeConsole.innerHTML = "";
+    handshakeSteps.forEach((step) => step.classList.remove("active"));
+    handshakeStatus.textContent = "CONNECTING";
+    handshakeStatus.className = "status-badge connecting";
+
+    handshakeSteps[0].classList.add("active");
+    for (const line of requestLines) {
+      appendConsoleLine(line, "request");
+      await sleep(170);
+    }
+
+    await sleep(550);
+    handshakeSteps[1].classList.add("active");
+    appendConsoleLine("", "response");
+    for (const line of responseLines) {
+      appendConsoleLine(line, "response");
+      await sleep(170);
+    }
+
+    await sleep(550);
+    handshakeSteps[2].classList.add("active");
+    appendConsoleLine("");
+    appendConsoleLine('<span class="system">✓ UPGRADE CONCLUÍDO — AGORA O CANAL USA FRAMES WEBSOCKET</span>');
+    handshakeStatus.textContent = "OPEN";
+    handshakeStatus.className = "status-badge open";
+    handshakeRunning = false;
+    startHandshake.disabled = false;
+  }
+
+  function resetHandshakeState() {
+    handshakeRunning = false;
+    startHandshake.disabled = false;
+    handshakeSteps.forEach((step) => step.classList.remove("active"));
+    handshakeStatus.textContent = "AGUARDANDO";
+    handshakeStatus.className = "status-badge idle";
+    handshakeConsole.innerHTML = `
+      <div class="console-placeholder">
+        <span class="big-icon">⌁</span>
+        <p>Clique no botão para acompanhar cada etapa do handshake.</p>
+      </div>`;
+  }
+
+  startHandshake.addEventListener("click", playHandshake);
+  resetHandshake.addEventListener("click", resetHandshakeState);
+
+  // WebSocket visual simulator
+  const connectBtn = $("#connectBtn");
+  const disconnectBtn = $("#disconnectBtn");
+  const connectionState = $("#connectionState");
+  const socketLed = $("#socketLed");
+  const socketWire = $("#socketWire");
+  const clientSend = $("#clientSend");
+  const serverSend = $("#serverSend");
+  const clientMessage = $("#clientMessage");
+  const serverMessage = $("#serverMessage");
+  const messageLog = $("#messageLog");
+  const clearLog = $("#clearLog");
+  const autoEvents = $("#autoEvents");
+
+  let simState = "CLOSED";
+  let simAutoTimer = null;
+  let logIsEmpty = true;
+
+  function setSimState(state) {
+    simState = state;
+    connectionState.textContent = state;
+    socketLed.className = `socket-led ${state.toLowerCase()}`;
+    const open = state === "OPEN";
+    connectBtn.disabled = state !== "CLOSED";
+    disconnectBtn.disabled = !open;
+    clientSend.disabled = !open;
+    serverSend.disabled = !open;
+    socketWire.classList.toggle("active", open);
+    if (!open) stopAutoEvents();
+  }
+
+  function timestamp() {
+    return new Date().toLocaleTimeString("pt-BR", { hour12: false });
+  }
+
+  function addLog(source, payload, kind = "FRAME") {
+    if (logIsEmpty) {
+      messageLog.innerHTML = "";
+      logIsEmpty = false;
+    }
+    const row = document.createElement("div");
+    row.className = "log-row";
+    const sourceClass = source.toLowerCase();
+    row.innerHTML = `
+      <span class="log-time">${timestamp()}</span>
+      <span class="log-source ${sourceClass}">${source}</span>
+      <span class="log-payload">${escapeHtml(payload)}</span>
+      <span class="log-kind">${kind}</span>`;
+    messageLog.appendChild(row);
+    messageLog.scrollTop = messageLog.scrollHeight;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function flyMessage(text, direction) {
+    const el = document.createElement("span");
+    el.className = `flying-message ${direction === "server" ? "to-server" : "to-client"}`;
+    el.textContent = text;
+    socketWire.appendChild(el);
+    setTimeout(() => el.remove(), 900);
+  }
+
+  async function connectSimulation() {
+    if (simState !== "CLOSED") return;
+    setSimState("CONNECTING");
+    addLog("SYSTEM", "Iniciando handshake HTTP Upgrade…", "STATE");
+    await sleep(700);
+    if (simState !== "CONNECTING") return;
+    setSimState("OPEN");
+    addLog("SYSTEM", "101 Switching Protocols → conexão OPEN", "STATE");
+    if (autoEvents.checked) startAutoEvents();
+  }
+
+  async function disconnectSimulation() {
+    if (simState !== "OPEN") return;
+    setSimState("CLOSING");
+    addLog("CLIENT", "Close frame: code 1000 (Normal Closure)", "CLOSE");
+    await sleep(500);
+    addLog("SERVER", "Close frame: code 1000 (reply)", "CLOSE");
+    await sleep(350);
+    setSimState("CLOSED");
+    addLog("SYSTEM", "Conexão TCP encerrada", "STATE");
+  }
+
+  function sendClient() {
+    if (simState !== "OPEN") return;
+    const text = clientMessage.value.trim() || "Olá, servidor!";
+    addLog("CLIENT", text, "TEXT");
+    flyMessage(text, "server");
+    clientMessage.value = "";
+  }
+
+  function sendServer() {
+    if (simState !== "OPEN") return;
+    const text = serverMessage.value.trim() || "Recebido!";
+    addLog("SERVER", text, "TEXT");
+    flyMessage(text, "client");
+    serverMessage.value = "";
+  }
+
+  const serverEvents = [
+    "Novo evento detectado: #A17",
+    "Usuário 42 ficou online",
+    "Métrica atualizada: CPU 37%",
+    "Mensagem recebida no canal geral",
+    "Preço atualizado: R$ 19,90",
+    "Job concluído com sucesso"
+  ];
+
+  function startAutoEvents() {
+    stopAutoEvents();
+    if (simState !== "OPEN" || !autoEvents.checked) return;
+    simAutoTimer = setInterval(() => {
+      if (simState !== "OPEN") return;
+      const msg = serverEvents[Math.floor(Math.random() * serverEvents.length)];
+      addLog("SERVER", msg, "PUSH");
+      flyMessage(msg, "client");
+    }, 2600);
+  }
+
+  function stopAutoEvents() {
+    if (simAutoTimer) {
+      clearInterval(simAutoTimer);
+      simAutoTimer = null;
+    }
+  }
+
+  connectBtn.addEventListener("click", connectSimulation);
+  disconnectBtn.addEventListener("click", disconnectSimulation);
+  clientSend.addEventListener("click", sendClient);
+  serverSend.addEventListener("click", sendServer);
+  clientMessage.addEventListener("keydown", (e) => { if (e.key === "Enter") sendClient(); });
+  serverMessage.addEventListener("keydown", (e) => { if (e.key === "Enter") sendServer(); });
+  autoEvents.addEventListener("change", () => autoEvents.checked ? startAutoEvents() : stopAutoEvents());
+  clearLog.addEventListener("click", () => {
+    logIsEmpty = true;
+    messageLog.innerHTML = `<div class="empty-log"><span>◎</span><p>O log foi limpo.</p></div>`;
+  });
+
+  // Frame inspector
+  const frameType = $("#frameType");
+  const framePayload = $("#framePayload");
+  const frameDirection = $("#frameDirection");
+  const opcodeValue = $("#opcodeValue");
+  const maskValue = $("#maskValue");
+  const payloadLenBits = $("#payloadLenBits");
+  const maskingKeyValue = $("#maskingKeyValue");
+  const payloadPreview = $("#payloadPreview");
+  const payloadBytes = $("#payloadBytes");
+  const fieldExplainer = $("#fieldExplainer");
+  const bitFields = $$(".bit-field");
+
+  const opcodeMap = {
+    text: "0001",
+    binary: "0010",
+    close: "1000",
+    ping: "1001",
+    pong: "1010"
+  };
+
+  const fieldDocs = {
+    fin: ["FIN", "Quando vale 1, este é o último frame da mensagem. Uma mensagem fragmentada pode usar vários frames."],
+    rsv: ["RSV1–RSV3", "Normalmente são 0. Extensões negociadas podem dar significado a esses bits, como compressão."],
+    opcode: ["Opcode", "Define como interpretar o frame: continuação, texto, binário ou um frame de controle como Close, Ping e Pong."],
+    mask: ["MASK", "É 1 em frames do cliente para o servidor e 0 em frames do servidor para o cliente. O mascaramento é uma exigência do protocolo."],
+    length: ["Payload Length", "O valor inicial usa 7 bits. 0–125 cabem diretamente; 126 indica mais 16 bits de comprimento e 127 indica mais 64 bits."],
+    key: ["Masking Key", "Presente somente quando MASK = 1. São 32 bits aleatórios usados para mascarar o payload enviado pelo cliente."],
+    payload: ["Payload Data", "São os bytes efetivos da mensagem. Frames de texto representam texto UTF-8; frames binários transportam bytes arbitrários."]
+  };
+
+  function randomMaskingKey() {
+    return Array.from({ length: 4 }, () =>
+      Math.floor(Math.random() * 256).toString(16).padStart(2, "0").toUpperCase()
+    ).join(" ");
+  }
+
+  function updateFrame() {
+    const type = frameType.value;
+    let value = framePayload.value;
+    if (["ping", "pong", "close"].includes(type) && new TextEncoder().encode(value).length > 125) {
+      value = value.slice(0, 125);
+      framePayload.value = value;
+    }
+    const bytes = new TextEncoder().encode(value).length;
+    const directLen = Math.min(bytes, 125);
+    opcodeValue.textContent = opcodeMap[type];
+    const masked = frameDirection.value === "client";
+    maskValue.textContent = masked ? "1" : "0";
+    maskingKeyValue.textContent = masked ? randomMaskingKey() : "—";
+    $(".bit-field.key").style.opacity = masked ? "1" : ".35";
+    payloadLenBits.textContent =
+      bytes <= 125 ? directLen.toString(2).padStart(7, "0")
+      : bytes <= 65535 ? "1111110 + 16 bits"
+      : "1111111 + 64 bits";
+    payloadPreview.textContent = value || "∅";
+    payloadBytes.textContent = `${bytes} byte${bytes === 1 ? "" : "s"}`;
+  }
+
+  [frameType, framePayload, frameDirection].forEach((el) => el.addEventListener("input", updateFrame));
+  bitFields.forEach((field) => {
+    field.addEventListener("click", () => {
+      bitFields.forEach((x) => x.classList.remove("active"));
+      field.classList.add("active");
+      const [title, text] = fieldDocs[field.dataset.field];
+      fieldExplainer.innerHTML = `
+        <span class="micro-label">CAMPO SELECIONADO</span>
+        <h3>${title}</h3>
+        <p>${text}</p>`;
+    });
+  });
+  updateFrame();
+
+  // Comparison
+  const techData = {
+    websocket: {
+      direction: "Bidirecional",
+      connection: "Persistente",
+      best: "Interação em tempo real nos dois sentidos",
+      description: "Uma única conexão permanece ativa e os dois lados enviam mensagens quando necessário.",
+      lanes: `
+        <div class="compare-arrow ws-1"><span>Cliente → Servidor &nbsp; →</span></div>
+        <div class="compare-arrow ws-2"><span>← &nbsp; Servidor → Cliente</span></div>`
+    },
+    polling: {
+      direction: "Cliente pergunta; servidor responde",
+      connection: "Requisições repetidas",
+      best: "Atualizações simples e pouco frequentes",
+      description: "O cliente consulta o servidor periodicamente, mesmo quando talvez não exista nada novo para receber.",
+      lanes: Array.from({ length: 6 }, (_, i) => `
+        <div class="compare-arrow poll" style="top:${10 + i * 18}px"><span>GET → ← resposta</span></div>`).join("")
+    },
+    sse: {
+      direction: "Servidor → Cliente",
+      connection: "HTTP persistente",
+      best: "Stream de eventos em uma direção",
+      description: "Server-Sent Events mantém uma resposta HTTP aberta para o servidor enviar eventos ao navegador. O fluxo nativo é unidirecional.",
+      lanes: `
+        <div class="compare-arrow sse-1"><span>GET /events →</span></div>
+        <div class="compare-arrow sse-2"><span>← eventos contínuos ←</span></div>`
+    }
+  };
+
+  function renderComparison(key) {
+    const data = techData[key];
+    $("#compareDirection").textContent = data.direction;
+    $("#compareConnection").textContent = data.connection;
+    $("#compareBest").textContent = data.best;
+    $("#compareDescription").textContent = data.description;
+    $("#compareLanes").innerHTML = data.lanes;
+  }
+
+  $$(".comparison-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      $$(".comparison-tab").forEach((x) => x.classList.remove("active"));
+      tab.classList.add("active");
+      renderComparison(tab.dataset.tech);
+    });
+  });
+  renderComparison("websocket");
+
+  // Lifecycle
+  const lifeData = {
+    connecting: ["0", "WebSocket.CONNECTING", "A conexão ainda está sendo estabelecida.", "O construtor foi chamado, mas o handshake ainda não terminou. Ainda não é possível enviar mensagens."],
+    open: ["1", "WebSocket.OPEN", "A conexão está aberta e pronta para trocar dados.", "Neste estado, send() pode transmitir mensagens e o evento message pode receber dados do servidor."],
+    closing: ["2", "WebSocket.CLOSING", "O encerramento já foi iniciado.", "Um frame Close foi enviado ou recebido e a conexão está caminhando para o encerramento."],
+    closed: ["3", "WebSocket.CLOSED", "A conexão está fechada ou não pôde ser aberta.", "Não é mais possível usar aquele socket para enviar mensagens. Para reconectar, a aplicação cria uma nova conexão."]
+  };
+
+  $$(".life-step").forEach((step) => {
+    step.addEventListener("click", () => {
+      $$(".life-step").forEach((x) => x.classList.remove("active"));
+      step.classList.add("active");
+      const data = lifeData[step.dataset.life];
+      $("#lifeExplainer").innerHTML = `
+        <div class="life-state-number">${data[0]}</div>
+        <div>
+          <span class="micro-label">${data[1]}</span>
+          <h3>${data[2]}</h3>
+          <p>${data[3]}</p>
+        </div>`;
+    });
+  });
+
+  // Copy code
+  $$(".copy-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const target = document.getElementById(button.dataset.copy);
+      const text = target.innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+        const old = button.textContent;
+        button.textContent = "Copiado ✓";
+        setTimeout(() => (button.textContent = old), 1400);
+      } catch {
+        button.textContent = "Selecione manualmente";
+      }
+    });
+  });
+
+  // Quiz
+  const quiz = [
+    {
+      q: "Depois que o handshake termina, como as mensagens WebSocket são transportadas?",
+      options: ["Como novas requisições HTTP", "Como frames WebSocket", "Sempre como JSON", "Sempre como UDP"],
+      correct: 1,
+      explain: "Correto: depois do upgrade, a conexão troca frames WebSocket — não uma nova requisição HTTP para cada mensagem."
+    },
+    {
+      q: "O que significa dizer que WebSocket é full-duplex?",
+      options: ["Só o cliente envia", "Só o servidor envia", "Os dois lados podem enviar dados independentemente", "A conexão usa dois cabos TCP"],
+      correct: 2,
+      explain: "Full-duplex significa que cliente e servidor podem transmitir nos dois sentidos de forma independente pela mesma conexão."
+    },
+    {
+      q: "Em frames enviados do navegador/cliente para o servidor, o bit MASK deve ser:",
+      options: ["Sempre 0", "Sempre 1", "Alternado", "Ignorado"],
+      correct: 1,
+      explain: "O RFC 6455 exige que frames cliente → servidor sejam mascarados. Frames servidor → cliente não devem ser mascarados."
+    },
+    {
+      q: "Qual opção protege a conexão WebSocket com TLS?",
+      options: ["ws://", "wss://", "websocket+ssl://", "httpsocket://"],
+      correct: 1,
+      explain: "wss:// é WebSocket sobre TLS. Em produção, é a opção normalmente apropriada."
+    },
+    {
+      q: "Qual afirmação é verdadeira sobre a API WebSocket nativa do navegador?",
+      options: ["Ela reconecta automaticamente", "Ela só envia JSON", "Ela expõe diretamente métodos ping() e pong()", "A aplicação precisa implementar reconexão se quiser esse comportamento"],
+      correct: 3,
+      explain: "A API WebSocket nativa não faz reconexão automática. Retry, backoff e retomada precisam ser tratados pela aplicação."
+    }
+  ];
+
+  let quizIndex = 0;
+  let score = 0;
+  let answered = false;
+
+  const quizQuestion = $("#quizQuestion");
+  const quizOptions = $("#quizOptions");
+  const quizFeedback = $("#quizFeedback");
+  const nextQuestion = $("#nextQuestion");
+  const quizProgress = $("#quizProgress");
+  const quizCounter = $("#quizCounter");
+  const quizCard = $("#quizCard");
+
+  function renderQuiz() {
+    const item = quiz[quizIndex];
+    answered = false;
+    nextQuestion.disabled = true;
+    quizFeedback.textContent = "";
+    quizQuestion.textContent = item.q;
+    quizCounter.textContent = `Pergunta ${quizIndex + 1} de ${quiz.length}`;
+    quizProgress.style.width = `${((quizIndex + 1) / quiz.length) * 100}%`;
+    quizOptions.innerHTML = item.options
+      .map((option, index) => `<button class="quiz-option" type="button" data-index="${index}">${option}</button>`)
+      .join("");
+
+    $$(".quiz-option", quizOptions).forEach((button) => {
+      button.addEventListener("click", () => answerQuiz(Number(button.dataset.index)));
+    });
+  }
+
+  function answerQuiz(selected) {
+    if (answered) return;
+    answered = true;
+    const item = quiz[quizIndex];
+    const buttons = $$(".quiz-option", quizOptions);
+    buttons.forEach((button, index) => {
+      button.disabled = true;
+      if (index === item.correct) button.classList.add("correct");
+      if (index === selected && selected !== item.correct) button.classList.add("wrong");
+    });
+    if (selected === item.correct) score++;
+    quizFeedback.textContent = item.explain;
+    nextQuestion.disabled = false;
+    nextQuestion.textContent = quizIndex === quiz.length - 1 ? "Ver resultado →" : "Próxima →";
+  }
+
+  function renderResult() {
+    const pct = Math.round((score / quiz.length) * 100);
+    const title = pct === 100 ? "Perfeito — você dominou o conceito." :
+      pct >= 80 ? "Muito bom — conceito bem entendido." :
+      pct >= 60 ? "Boa base — vale revisar alguns detalhes." :
+      "Revise as seções e tente outra vez.";
+    quizCard.innerHTML = `
+      <div class="quiz-result">
+        <div class="score-ring" style="--score:${pct}%"><strong>${score}/${quiz.length}</strong></div>
+        <h3>${title}</h3>
+        <p>Você acertou ${pct}% das perguntas.</p>
+        <button class="primary-btn small" id="restartQuiz" type="button">Refazer quiz</button>
+      </div>`;
+    $("#restartQuiz").addEventListener("click", () => {
+      quizIndex = 0;
+      score = 0;
+      quizCard.innerHTML = `
+        <span class="micro-label">PERGUNTA</span>
+        <h3 id="quizQuestion"></h3>
+        <div class="quiz-options" id="quizOptions"></div>
+        <div class="quiz-feedback" id="quizFeedback"></div>
+        <button class="primary-btn small" id="nextQuestion" type="button" disabled>Próxima →</button>`;
+      // Rebind fresh references by reloading the page fragment cleanly.
+      window.location.reload();
+    });
+  }
+
+  nextQuestion.addEventListener("click", () => {
+    if (!answered) return;
+    if (quizIndex === quiz.length - 1) {
+      renderResult();
+      return;
+    }
+    quizIndex++;
+    renderQuiz();
+  });
+
+  renderQuiz();
+})();
+
+</script>
 </body>
 </html>
